@@ -1,0 +1,18 @@
+{
+    "name": "themegrabber",
+    "version": "0.0.1",
+    "description": "Grab the theme from any site - only the css and images used for the theme.",
+    "homepage": "http://github.com/dylang",
+    "author": "Dylan Greene <dylang@gmail.com>",
+    "contributors": [
+        "Dylan Greene <dylang@gmail.com>"
+    ],
+    "dependencies":
+    {
+        "cssom": ">= 0.0.1",
+        "jsdom": ">= 0.0.1",
+        "logging": ">= 2.0.0"
+    },
+    "main": "themegrabber.js",
+    "engines": { "node": ">=0.4.0" }
+}
