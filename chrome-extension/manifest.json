@@ -1,0 +1,15 @@
+{
+    "name": "Snooper",
+    "background_page": "background/background.html",
+    "browser_action": {
+        "default_icon": "icons/32.png",
+        "default_title": "Snooper",
+        "popup": "popup/popup.html"
+    },
+    "description": "Snooper",
+    "icons": {
+        "32": "icons/32.png"
+    },
+    "permissions": [ "tabs", "notifications", "http://*/*", "https://*/*" ],
+    "version": "0.1"
+}

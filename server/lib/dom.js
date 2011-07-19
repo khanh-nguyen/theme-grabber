@@ -1,6 +1,5 @@
 var log = require('logging').from(__filename);
 var JSDom = require("jsdom");
-var Stylesheets = require('./stylesheets');
 
 var $;
 var window;
@@ -10,11 +9,12 @@ function setup(options) {
     $ = window.$;
 }
 
-
+// TODO: Move to client
 function remove(selector){
     if (selector) { $(selector).html('').text('\n\n**REMOVED**\n\n'); }
 }
 
+// TODO: Move to client
 function removeCrap() {
     $('script').remove();
     $('input[type=hidden]').remove();
@@ -25,17 +25,17 @@ function removeCrap() {
 function parse(url, selector) {
     JSDom.env(url,
           [
-             'http://code.jquery.com/jquery-1.5.min.js'
+             'http://code.jquery.com/jquery-1.6.2.min.js'
           ],
           function(errors, window) {
               setup({ window: window, url: url });
               remove(selector);
               removeCrap();
-              Stylesheets.setup({window: window, url: url});
-              Stylesheets.load(complete);
+              //Stylesheets.setup({window: window, url: url});
+              //Stylesheets.load(complete);
           });
 }
-
+// TODO: Move to client
 function complete (data) {
     log('complete');
     console.log('\n\n\n\n*************\n\n\n\n');
