@@ -67,35 +67,42 @@
 
     function createZip(content){
         log('creating zip');
-        var zip = new JSZip('DEFLATE'); //'DEFLATE'
+        var debug = false;
+        try {
+        var zip = new JSZip('STORE'); //'DEFLATE'
 
-        zip.add('body.html', content.html);
-        zip.add('theme.css', content.reduced.join('\n'));
-        zip.add('overrides.css', '/* Put overrides in here */');
+        if (!debug) {
+            zip.add('body.html', content.html);
+            zip.add('theme.css', content.reduced.join('\n'));
+            zip.add('overrides.css', '/* Put overrides in here */');
 
-        var duplicateCheck = {};
+            var duplicateCheck = {};
 
-        content.originals.forEach(function(stylesheet, i){
-            var filename = urlToFilename(stylesheet.url)|| 'file' + i + '.css';
-            if (duplicateCheck[filename]) {
-                var temp = filename.match(/^([^.]*)\.(.*)$/);
-                filename = temp[1] + i + '.' + temp[2];
-            }
-            log('adding stylesheet: ' + filename);
-            zip.add('originals/' + filename, stylesheet.data);
-            duplicateCheck[filename] = true;
-        });
-
-        log('done adding css');
-
-        content.images.forEach(function(image) {
+            content.originals.forEach(function(stylesheet, i){
+                var filename = urlToFilename(stylesheet.url)|| 'file' + i + '.css';
+                if (duplicateCheck[filename]) {
+                    var temp = filename.match(/^([^.]*)\.(.*)$/);
+                    filename = temp[1] + i + '.' + temp[2];
+                }
+                log('adding stylesheet: ' + filename);
+                zip.add('originals/' + filename, stylesheet.data);
+                duplicateCheck[filename] = true;
+            });
+        }
+        content.images.forEach(function(image, i) {
             var filename = image.filename;
-            log('adding image: ' + filename + ' (' + image.url + ')');
-            zip.add('images/' + filename, image.data, {binary: true} );
+            if (debug && i == 0 || !debug) {
+                log('adding image: ' + filename + ' (' + image.url + ')');
+                zip.add('images/' + filename, image.data, {binary: true} );
+            }
         });
 
         log('done adding files to zip');
-        return zip.generate();
+        var z = zip.generate();
+        } catch(e) {
+            console.log(e);
+        }
+            return z;
     }
 
     function activate(tab) {
