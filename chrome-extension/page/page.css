@@ -1,0 +1,26 @@
+.plugin_hover {
+    box-shadow: 0 0 85px rgba(0,0,0,0.8), inset 0 0 95px rgba(125, 173, 217,0.8);
+}
+
+.plugin_remove {
+    opacity: 0.3;
+}
+
+.plugin_hide {
+    display: none;
+}
+
+.plugin_remove.plugin_hover {
+    box-shadow: 0 0 85px rgba(125, 173, 217,0.8), inset 0 0 95px rgba(0,0,0,0.8);
+}
+
+.plugin_info {
+    position: fixed;
+    top: 0;
+    right: 0;
+    min-width: 100px;
+    border:  2px solid rgba(62, 86, 180, 0.9);
+    padding:  10px;
+    background: rgba(125, 173, 217, 0.96);
+    z-index: 10000000;
+}

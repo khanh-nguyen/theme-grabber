@@ -3,8 +3,7 @@
     "background_page": "background/background.html",
     "browser_action": {
         "default_icon": "icons/32.png",
-        "default_title": "Snooper",
-        "popup": "popup/popup.html"
+        "default_title": "Snooper"
     },
     "description": "Snooper",
     "icons": {
