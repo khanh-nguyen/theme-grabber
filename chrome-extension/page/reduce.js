@@ -6,11 +6,6 @@ function reduce(options) {
         return {};
     }
 
-    // TODO:
-    // Need an ONPAGE or STYLETAG option
-    // because some inline features are shared
-    // with style tag
-
     var data = options.data;
     var sourceUrl = options.sourceUrl;
     var imageUrls = options.imageUrls;
@@ -60,7 +55,7 @@ function reduce(options) {
 
                                     if (filename) {
                                         imageUrls = Files.add(url, imageUrls);
-                                        rule.style[attr] = background.replace(/url\('?"?([^"']*)"?'?\)/, 'url(' + (options.inline ? '{clientUrl}/' : '') + 'images/' + filename + ')');
+                                        rule.style[attr] = background.replace(/url\('?"?([^"']*)"?'?\)/, 'url(' + (options.inline || options.styleTag ? '{clientUrl}/' : '') + 'images/' + filename + ')');
                                     }
                                 }
                             });
@@ -90,24 +85,24 @@ function reduce(options) {
             });
         }
     });
-    return  options.inline ?
-            {
-                imageUrls:  imageUrls,
-                css:        found.join('').trim().replace(/^[^{]*\{(.*)\}/, '$1') //remove the body { .. }
-            }
-            :
-            {
+
+    var newline = '\r\n';
+
+    var css = !found.length ? ''
+                : options.styleTag ? newline + found.join(newline + newline).trim() + newline
+                : options.inline ? found.join('').trim().replace(/^[^{]*\{(.*)\}/, '$1') //remove the body { .. }
+                :   '/** ' + newline +
+                    ' * ' + newline +
+                    ' * imported from: ' + newline +
+                    ' * ' + (sourceUrl || 'Inline CSS on ' + document.location) + '' + newline +
+                    ' * ' + newline +
+                    ' **' + '/' +newline +
+                    found.join(newline + newline);
+    return  {
                 url:        sourceUrl,
                 found:      found.length,
                 notFound:   notFound.length,
                 imageUrls:  imageUrls,
-                css:        found.length ? '/' + '** ' + '\n' +
-                            ' * ' + '\n' +
-                            ' * imported from: ' + '\n' +
-                            ' * ' + (sourceUrl || 'Inline CSS on ' + document.location) + '' + '\n' +
-                            ' * ' + '\n' +
-                            ' **' + '/' + '\n' +
-                            found.join('\n\n')
-                            : ''
+                css:        css
             };
 }

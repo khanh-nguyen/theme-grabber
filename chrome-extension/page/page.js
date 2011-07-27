@@ -22,7 +22,7 @@
                     .replace(/\n[\s]*\n/gs, '\n')
                     .replace(/[^A-Za-z0-9<>:.;+\-"(){_}=\[\]\t\s\r\n\/\*!\'\&\#\%,\?\$\`~|]/g, '') // kill all non ascii
                     .replace(/<script/g, '<!-- <script') //disable all scripts
-                    .replace(/script>/g, 'script> -->')
+                    .replace(/<\/script>/g, '</' + 'script> -->')
                     .trim();
     }
 
@@ -86,7 +86,7 @@
         $('style').each(function(){
             var $el = $(this);
             var css = $el.text();
-            var reducedResults = reduce({ data: css, sourceUrl: document.location.origin + document.location.pathname, imageUrls: imageUrls });
+            var reducedResults = reduce({ data: css, sourceUrl: document.location.origin + document.location.pathname, imageUrls: imageUrls, styleTag: true });
             if (reducedResults.css) {
                 imageUrls = reducedResults.imageUrls;
                 $el.text(reducedResults.css);
