@@ -33,7 +33,7 @@ function reduce(options) {
     stylesheetObject.cssRules.forEach(function(rule) {
         if (rule.href) {
             //additional css file
-            var cssFile = Files.fixRelative(rule.href, sourceUrl).replace(/https?:/, '');
+            var cssFile = Files.fixRelative(rule.href, sourceUrl);
             console.log('IMPORT RULE:', 'original url:', rule.href, 'new url:', cssFile, 'source:', sourceUrl);
 
             //TODO - import this file too
@@ -97,8 +97,6 @@ function reduce(options) {
         }
     });
 
-    found = imports.concat(found);
-
     var css =   !found.length ? ''
                 : options.styleTag ? newline + found.join(newline + newline).trim() + newline
                 : options.inline ? found.join('').trim().replace(/^[^{]*\{(.*)\}/, '$1') //remove the body { .. }
@@ -114,6 +112,7 @@ function reduce(options) {
                 found:      found.length,
                 notFound:   notFound.length,
                 imageUrls:  imageUrls,
-                css:        css
+                css:        css,
+                imports:    imports
             };
 }

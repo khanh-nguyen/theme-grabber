@@ -34,6 +34,7 @@
 
         var reduced = [];
         var originals = [];
+        var imports = [];
         var imageUrls = {};
 
         function loadCSS() {
@@ -45,13 +46,14 @@
                         if (reducedResults.css) {
                             reduced.push(reducedResults.css);
                             imageUrls = reducedResults.imageUrls;
+                            imports = imports.concat(reducedResults.imports);
                         }
                         originals.push({ url: url, data: response.data });
                     }
                     loadCSS();
                 });
             } else {
-               cb(null, {reduced: reduced, originals: originals, imageUrls: imageUrls});
+               cb(null, {reduced: imports.concat(reduced), originals: originals, imageUrls: imageUrls});
             }
         }
         loadCSS();
