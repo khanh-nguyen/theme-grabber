@@ -9,8 +9,7 @@
     var hostname = document.location.origin;  // Example: http://site.com
 
     function html(){
-        //Todo: disable javascript
-        //Todo: include any tips?
+        //Todo: include tips/hints for templating?
 
         return $('body')
                     .html()
@@ -22,6 +21,8 @@
                     .replace(/\xAE/, '&reg;')
                     .replace(/\n[\s]*\n/gs, '\n')
                     .replace(/[^A-Za-z0-9<>:.;+\-"(){_}=\[\]\t\s\r\n\/\*!\'\&\#\%,\?\$\`~|]/g, '') // kill all non ascii
+                    .replace(/<script/g, '<!-- <script') //disable all scripts
+                    .replace(/script>/g, 'script> -->')
                     .trim();
     }
 
@@ -40,7 +41,7 @@
             if (url) {
                 chrome.extension.sendRequest( {type: 'load', url: url }, function (response) {
                     if (response.data) {
-                        var reducedResults = reduce(response.data || '', url, imageUrls);
+                        var reducedResults = reduce({ data: response.data, sourceUrl: url, imageUrls: imageUrls });
                         if (reducedResults.css) {
                             reduced.push(reducedResults.css);
                             imageUrls = reducedResults.imageUrls;
@@ -58,6 +59,7 @@
 
     function loadImages(imageUrls, cb) {
 
+        // Images
         $('img').each(function(){
             var url = this.src;
             url = Files.fixRelative(url, document.location.origin + document.location.pathname);
@@ -68,12 +70,32 @@
             }
         });
 
-        //TODO: inline styles
-        /*
-            $('style')
-            $('[style*=background]')
+        // Inline styles
+        $('[style*=background]').each(function(){
+            var $el = $(this);
+            var css = $el.attr('style');
 
-         */
+            var reducedResults = reduce({ data: css, sourceUrl: document.location.origin + document.location.pathname, imageUrls: imageUrls, inline: true });
+            if (reducedResults.css) {
+                imageUrls = reducedResults.imageUrls;
+                $el.attr('style', reducedResults.css);
+            }
+        });
+
+        // Style tags
+        $('style').each(function(){
+            var $el = $(this);
+            var css = $el.text();
+            var reducedResults = reduce({ data: css, sourceUrl: document.location.origin + document.location.pathname, imageUrls: imageUrls });
+            if (reducedResults.css) {
+                imageUrls = reducedResults.imageUrls;
+                $el.text(reducedResults.css);
+                $el.prependTo('body'); //so that it shows up when we request the html
+            } else {
+                $el.remove();
+            }
+        });
+
         var images = [];
         var filenames = Object.keys(imageUrls);
 
@@ -92,7 +114,6 @@
         }
         loadImage();
     }
-
 
     function createUI() {
 
@@ -122,6 +143,8 @@
             .change();
 
         $info.find('[data-action=download]').click(function() {
+            $info.remove();
+
             $($selector.val() || '#NOTHING').html('***Removed****');
 
             var reduced;

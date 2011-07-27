@@ -1,21 +1,28 @@
 
-function reduce(data, sourceUrl, imageUrls) {
+function reduce(options) {
 
-    if (!data || !sourceUrl) { return {}; }
+    if (!options || !options.data || !options.sourceUrl) {
+        console.log('missing data for reduce');
+        return {};
+    }
+
+    // TODO:
+    // Need an ONPAGE or STYLETAG option
+    // because some inline features are shared
+    // with style tag
+
+    var data = options.data;
+    var sourceUrl = options.sourceUrl;
+    var imageUrls = options.imageUrls;
+
+    if (options.inline) {
+        // add placeholder so it can be found
+        data = 'body { ' + data + ' }';
+    }
 
     var found = [],
         notFound = [];
 
-
-
-    //remove tabs, make image urls absolute
-    //TODO: fails when the url includes http://
-    /*
-        data = data
-                    .replace(/\t/g, '    ')
-                    .replace(/(url\(['"]?)([a-zA-Z0-9.][^)]*)/g, '$1' + absolutePath + '/$2')
-                    .replace(/(url\(['"]?)(\/[^)]*)/g, '$1' + hostname + '$2');
-    */
     var stylesheetObject;
 
     try {
@@ -46,14 +53,14 @@ function reduce(data, sourceUrl, imageUrls) {
                             ['background-image', 'background'].forEach(function(attr){
                                 if (rule.style[attr]) {
                                     var background = rule.style[attr];
-                                    var url = background.replace(/.*url\('?"?([^"']*)"?'?\).*/, '$1')
+                                    var url = background.replace(/.*url\('?"?([^"']*)"?'?\).*/, '$1');
                                     url = Files.fixRelative(url, sourceUrl);
 
                                     var filename = Files.urlToFilename(url);
 
                                     if (filename) {
                                         imageUrls = Files.add(url, imageUrls);
-                                        rule.style[attr] = background.replace(/url\('?"?([^"']*)"?'?\)/, 'url("images/' + filename + '")');
+                                        rule.style[attr] = background.replace(/url\('?"?([^"']*)"?'?\)/, 'url(' + (options.inline ? '{clientUrl}/' : '') + 'images/' + filename + ')');
                                     }
                                 }
                             });
@@ -74,14 +81,22 @@ function reduce(data, sourceUrl, imageUrls) {
                             }
                         }
                         catch (e) {
-                            found.push('/' + '* selector not searchable with jquery ', selector, '*' + '/');
+                            console.log('selector not searchable with jquery ', selector);
+                            //found.push('/' + '* selector not searchable with jquery ', selector, '*' + '/');
+                            notFound.push(selector);
                         }
                     }
                 }
             });
         }
     });
-    return  {
+    return  options.inline ?
+            {
+                imageUrls:  imageUrls,
+                css:        found.join('').trim().replace(/^[^{]*\{(.*)\}/, '$1') //remove the body { .. }
+            }
+            :
+            {
                 url:        sourceUrl,
                 found:      found.length,
                 notFound:   notFound.length,
@@ -94,5 +109,5 @@ function reduce(data, sourceUrl, imageUrls) {
                             ' **' + '/' + '\n' +
                             found.join('\n\n')
                             : ''
-    };
+            };
 }
