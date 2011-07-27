@@ -15,8 +15,11 @@ function reduce(options) {
         data = 'body { ' + data + ' }';
     }
 
+    var newline = '\r\n';
+
     var found = [],
-        notFound = [];
+        notFound = [],
+        imports = [];
 
     var stylesheetObject;
 
@@ -28,6 +31,15 @@ function reduce(options) {
     }
 
     stylesheetObject.cssRules.forEach(function(rule) {
+        if (rule.href) {
+            //additional css file
+            var cssFile = Files.fixRelative(rule.href, sourceUrl).replace(/https?:/, '');
+            console.log('IMPORT RULE:', 'original url:', rule.href, 'new url:', cssFile, 'source:', sourceUrl);
+
+            //TODO - import this file too
+            imports.push('@import "' + cssFile + '"; /* Todo: make this local */');
+        }
+
         if (rule.selectorText) {
 
             var selectors = rule.selectorText.split(',');
@@ -55,7 +67,7 @@ function reduce(options) {
 
                                     if (filename) {
                                         imageUrls = Files.add(url, imageUrls);
-                                        rule.style[attr] = background.replace(/url\('?"?([^"']*)"?'?\)/, 'url(' + (options.inline || options.styleTag ? '{clientUrl}/' : '') + 'images/' + filename + ')');
+                                        rule.style[attr] = background.replace(/url\('?"?([^"']*)"?'?\)/, 'url(' + (options.inline || options.styleTag ? '{{themeUrl}}/assets/' : '') + filename + ')');
                                     }
                                 }
                             });
@@ -66,7 +78,6 @@ function reduce(options) {
                         }
                     }
                     catch(e){
-                        console.log(simpleSelector, e);
                         try {
                             if ($(simpleSelector).length) {
                                 found.push(cssText);
@@ -76,7 +87,7 @@ function reduce(options) {
                             }
                         }
                         catch (e) {
-                            console.log('selector not searchable with jquery ', selector);
+                            console.log('selector not searchable with jquery:', selector, 'source:', options.sourceUrl);
                             //found.push('/' + '* selector not searchable with jquery ', selector, '*' + '/');
                             notFound.push(selector);
                         }
@@ -86,9 +97,9 @@ function reduce(options) {
         }
     });
 
-    var newline = '\r\n';
+    found = imports.concat(found);
 
-    var css = !found.length ? ''
+    var css =   !found.length ? ''
                 : options.styleTag ? newline + found.join(newline + newline).trim() + newline
                 : options.inline ? found.join('').trim().replace(/^[^{]*\{(.*)\}/, '$1') //remove the body { .. }
                 :   '/** ' + newline +

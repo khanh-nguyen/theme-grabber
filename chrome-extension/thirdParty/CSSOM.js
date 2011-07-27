@@ -347,10 +347,106 @@ CSSOM.CSSImportRule.prototype = new CSSOM.CSSRule;
 CSSOM.CSSImportRule.prototype.constructor = CSSOM.CSSImportRule;
 CSSOM.CSSImportRule.prototype.type = 3;
 CSSOM.CSSImportRule.prototype.__defineGetter__("cssText", function() {
-	return "@import url("+ this.href +") "+ this.media.mediaText +";"
+	var mediaText = this.media.mediaText;
+	return "@import url(" + this.href + ")" + (mediaText ? " " + mediaText : "") + ";";
 });
-CSSOM.CSSImportRule.prototype.__defineSetter__("cssText", function() {
-	return "@import url("+ this.href +") "+ this.media.mediaText +";"
+
+CSSOM.CSSImportRule.prototype.__defineSetter__("cssText", function(cssText) {
+	var i = 0;
+
+	/**
+	 * @import url(partial.css) screen, handheld;
+	 *        ||               |
+	 *        after-import     media
+	 *         |
+	 *         url
+	 */
+	var state = '';
+
+	var buffer = '';
+	var index;
+	var mediaText = '';
+	for (var character; character = cssText.charAt(i); i++) {
+
+		switch (character) {
+			case ' ':
+			case '\t':
+			case '\r':
+			case '\n':
+			case '\f':
+				if (state == 'after-import') {
+					state = 'url';
+				} else {
+					buffer += character;
+				}
+				break;
+
+			case '@':
+				if (!state && cssText.indexOf('@import', i) == i) {
+					state = 'after-import';
+					i += 'import'.length;
+					buffer = '';
+				}
+				break;
+
+			case 'u':
+				if (state == 'url' && cssText.indexOf('url(', i) == i) {
+					index = cssText.indexOf(')', i + 1);
+					if (index == -1) {
+						throw i + ': ")" not found';
+					}
+					i += 'url('.length;
+					var url = cssText.slice(i, index);
+					if (url[0] === url[url.length - 1]) {
+						if (url[0] == '"' || url[0] == "'") {
+							url = url.slice(1, -1);
+						}
+					}
+					this.href = url;
+					i = index;
+					state = 'media';
+				}
+				break;
+
+			case '"':
+				if (state == 'url') {
+					index = cssText.indexOf('"', i + 1);
+					if (!index) {
+						throw i + ": '\"' not found";
+					}
+					this.href = cssText.slice(i + 1, index);
+					i = index;
+					state = 'media';
+				}
+				break;
+
+			case "'":
+				if (state == 'url') {
+					index = cssText.indexOf("'", i + 1);
+					if (!index) {
+						throw i + ': "\'" not found';
+					}
+					this.href = cssText.slice(i + 1, index);
+					i = index;
+					state = 'media';
+				}
+				break;
+
+			case ';':
+				if (state == 'media') {
+					if (buffer) {
+						this.media.mediaText = buffer.trim();
+					}
+				}
+				break;
+
+			default:
+				if (state == 'media') {
+					buffer += character;
+				}
+				break;
+		}
+	}
 });
 
 
@@ -433,6 +529,33 @@ CSSOM.CSSMediaRule.prototype.__defineGetter__("cssText", function() {
 		cssTexts.push(this.cssRules[i].cssText);
 	}
 	return "@media " + this.media.mediaText + " {" + cssTexts.join("") + "}"
+});
+
+
+
+/**
+ * @constructor
+ * @see http://www.w3.org/TR/css3-animations/#DOM-CSSKeyframesRule
+ */
+CSSOM.CSSKeyframesRule = function CSSKeyframesRule() {
+	this.name = '';
+	this.cssRules = [];
+};
+
+CSSOM.CSSKeyframesRule.prototype = new CSSOM.CSSRule;
+CSSOM.CSSKeyframesRule.prototype.constructor = CSSOM.CSSKeyframesRule;
+CSSOM.CSSKeyframesRule.prototype.type = 8;
+//FIXME
+//CSSOM.CSSKeyframesRule.prototype.insertRule = CSSStyleSheet.prototype.insertRule;
+//CSSOM.CSSKeyframesRule.prototype.deleteRule = CSSStyleSheet.prototype.deleteRule;
+
+// http://www.opensource.apple.com/source/WebCore/WebCore-955.66.1/css/WebKitCSSKeyframesRule.cpp
+CSSOM.CSSKeyframesRule.prototype.__defineGetter__("cssText", function() {
+	var cssTexts = [];
+	for (var i=0, length=this.cssRules.length; i < length; i++) {
+		cssTexts.push("  " + this.cssRules[i].cssText);
+	}
+	return "@-webkit-keyframes " + this.name + " { \n" + cssTexts.join("\n") + "\n}"
 });
 
 
@@ -528,7 +651,18 @@ CSSOM.parse = function parse(token, options) {
 
 	options = options || {};
 	var i = options.startIndex || 0;
-	var state = options.state || "selector";
+
+	/**
+	  "before-selector" or
+	  "selector" or
+	  "atRule" or
+	  "atBlock" or
+	  "before-name" or
+	  "name" or
+	  "before-value" or
+	  "value"
+	*/
+	var state = options.state || "before-selector";
 
 	var index;
 	var j = i;
@@ -538,6 +672,8 @@ CSSOM.parse = function parse(token, options) {
 		"selector": true,
 		"value": true,
 		"atRule": true,
+		"importRule-begin": true,
+		"importRule": true,
 		"atBlock": true
 	};
 
@@ -546,7 +682,7 @@ CSSOM.parse = function parse(token, options) {
 	// @type CSSStyleSheet|CSSMediaRule
 	var currentScope = styleSheet;
 	
-	var selector, name, value, priority="", styleRule, mediaRule;
+	var selector, name, value, priority="", styleRule, mediaRule, importRule, keyframesRule, keyframeRule;
 
 	for (var character; character = token.charAt(i); i++) {
 
@@ -558,18 +694,7 @@ CSSOM.parse = function parse(token, options) {
 		case "\n":
 		case "\f":
 			if (SIGNIFICANT_WHITESPACE[state]) {
-				// Squash 2 or more white-spaces in the row into 1
-				switch (token.charAt(i - 1)) {
-					case " ":
-					case "\t":
-					case "\r":
-					case "\n":
-					case "\f":
-						break;
-					default:
-						buffer += " ";
-						break;
-				}
+				buffer += character;
 			}
 			break;
 
@@ -582,6 +707,14 @@ CSSOM.parse = function parse(token, options) {
 			}
 			buffer += token.slice(i, index);
 			i = index - 1;
+			switch (state) {
+				case 'before-value':
+					state = 'value';
+					break;
+				case 'importRule-begin':
+					state = 'importRule';
+					break;
+			}
 			break;
 
 		case "'":
@@ -592,6 +725,14 @@ CSSOM.parse = function parse(token, options) {
 			}
 			buffer += token.slice(i, index);
 			i = index - 1;
+			switch (state) {
+				case 'before-value':
+					state = 'value';
+					break;
+				case 'importRule-begin':
+					state = 'importRule';
+					break;
+			}
 			break;
 
 		// Comment
@@ -607,13 +748,31 @@ CSSOM.parse = function parse(token, options) {
 			} else {
 				buffer += character;
 			}
+			if (state == "importRule-begin") {
+				buffer += " ";
+				state = "importRule";
+			}
 			break;
 
 		// At-rule
 		case "@":
 			if (token.indexOf("@media", i) == i) {
 				state = "atBlock";
+				mediaRule = new CSSOM.CSSMediaRule;
+				mediaRule.__starts = i;
 				i += "media".length;
+				buffer = "";
+				break;
+			} else if (token.indexOf("@import", i) == i) {
+				state = "importRule-begin";
+				i += "import".length;
+				buffer += "@import";
+				break;
+			} else if (token.indexOf("@-webkit-keyframes", i) == i) {
+				state = "keyframesRule-begin";
+				keyframesRule = new CSSOM.CSSKeyframesRule;
+				keyframesRule.__starts = i;
+				i += "-webkit-keyframes".length;
 				buffer = "";
 				break;
 			} else if (state == "selector") {
@@ -624,16 +783,28 @@ CSSOM.parse = function parse(token, options) {
 
 		case "{":
 			if (state == "selector" || state == "atRule") {
-				styleRule = new CSSOM.CSSStyleRule;
-				styleRule.selectorText = buffer.trim();
+				styleRule.selectorText = buffer.trimRight();
+				styleRule.style.__starts = i;
 				buffer = "";
-				state = "name";
+				state = "before-name";
 			} else if (state == "atBlock") {
-				mediaRule = new CSSOM.CSSMediaRule;
 				mediaRule.media.mediaText = buffer.trim();
+				mediaRule.parentRule = currentScope;
 				currentScope = mediaRule;
 				buffer = "";
-				state = "selector";
+				state = "before-selector";
+			} else if (state == "keyframesRule-begin") {
+				keyframesRule.name = buffer.trimRight();
+				keyframesRule.parentRule = currentScope;
+				currentScope = keyframesRule;
+				buffer = "";
+				state = "keyframeRule-begin";
+			} else if (state == "keyframeRule-begin") {
+				styleRule = new CSSOM.CSSKeyframeRule;
+				styleRule.keyText = buffer.trimRight();
+				styleRule.__starts = i;
+				buffer = "";
+				state = "before-name";
 			}
 			break;
 
@@ -641,7 +812,20 @@ CSSOM.parse = function parse(token, options) {
 			if (state == "name") {
 				name = buffer.trim();
 				buffer = "";
-				state = "value";
+				state = "before-value";
+			} else {
+				buffer += character;
+			}
+			break;
+
+		case '(':
+			if (state == 'value') {
+				index = token.indexOf(')', i + 1);
+				if (index == -1) {
+					throw i + ': unclosed "("';
+				}
+				buffer += token.slice(i, index + 1);
+				i = index;
 			} else {
 				buffer += character;
 			}
@@ -657,45 +841,84 @@ CSSOM.parse = function parse(token, options) {
 			break;
 
 		case ";":
-			if (state == "value") {
-				styleRule.style.setProperty(name, buffer.trim(), priority);
-				priority = "";
-				buffer = "";
-				state = "name";
-			} else if (state == "atRule") {
-				buffer = "";
-				state = "selector";
-			} else {
-				buffer += character;
+			switch (state) {
+				case "value":
+					styleRule.style.setProperty(name, buffer.trim(), priority);
+					priority = "";
+					buffer = "";
+					state = "before-name";
+					break;
+				case "atRule":
+					buffer = "";
+					state = "before-selector";
+					break;
+				case "importRule":
+					importRule = new CSSOM.CSSImportRule;
+					importRule.parentRule = currentScope;
+					importRule.cssText = buffer + character;
+					currentScope.cssRules.push(importRule);
+					buffer = "";
+					state = "before-selector";
+					break;
+				default:
+					buffer += character;
+					break;
 			}
 			break;
 
 		case "}":
-			if (state == "value") {
-				styleRule.style.setProperty(name, buffer.trim(), priority);
-				priority = "";
-				buffer = "";
-				currentScope.cssRules.push(styleRule);
-			} else if (state == "name") {
-				currentScope.cssRules.push(styleRule);
-				buffer = "";
-			} else if (state == "selector") {
-				// End of media rule.
-				// Nesting of media rules isn't supported
-				if (!mediaRule) {
-					throw "unexpected }";
-				}
-				styleSheet.cssRules.push(mediaRule);
-				currentScope = styleSheet;
-				buffer = "";
+			switch (state) {
+				case "value":
+					styleRule.style.setProperty(name, buffer.trim(), priority);
+					priority = "";
+				case "before-name":
+				case "name":
+					styleRule.__ends = i + 1;
+					styleRule.parentRule = currentScope;
+					currentScope.cssRules.push(styleRule);
+					buffer = "";
+					if (currentScope.constructor == CSSOM.CSSKeyframesRule) {
+						state = "keyframeRule-begin";
+					} else {
+						state = "before-selector";
+					}
+					break;
+				case "keyframeRule-begin":
+				case "before-selector":
+				case "selector":
+					// End of media rule.
+					// Nesting rules aren't supported yet
+					if (!currentScope.parentRule) {
+						throw "unexpected }";
+					}
+					currentScope.__ends = i + 1;
+					currentScope.parentRule.cssRules.push(currentScope);
+					currentScope = currentScope.parentRule;
+					buffer = "";
+					state = "before-selector";
+					break;
 			}
-			state = "selector";
 			break;
 
 		default:
+			switch (state) {
+				case "before-selector":
+					state = "selector";
+					styleRule = new CSSOM.CSSStyleRule;
+					styleRule.__starts = i;
+					break;
+				case "before-name":
+					state = "name";
+					break;
+				case "before-value":
+					state = "value";
+					break;
+				case "importRule-begin":
+					state = "importRule";
+					break;
+			}
 			buffer += character;
 			break;
-
 		}
 	}
 
@@ -721,11 +944,12 @@ CSSOM.clone = function clone(stylesheet) {
 
 	var RULE_TYPES = {
 		1: CSSOM.CSSStyleRule,
-		4: CSSOM.CSSMediaRule
-		//FIXME
+		4: CSSOM.CSSMediaRule,
 		//3: CSSOM.CSSImportRule,
 		//5: CSSOM.CSSFontFaceRule,
 		//6: CSSOM.CSSPageRule,
+		8: CSSOM.CSSKeyframesRule,
+		9: CSSOM.CSSKeyframeRule
 	};
 
 	for (var i=0, rulesLength=rules.length; i < rulesLength; i++) {
@@ -741,6 +965,10 @@ CSSOM.clone = function clone(stylesheet) {
 				styleClone._importants[name] = style.getPropertyPriority(name);
 			}
 			styleClone.length = style.length;
+		}
+
+		if ("keyText" in rule) {
+			ruleClone.keyText = rule.keyText;
 		}
 
 		if ("selectorText" in rule) {

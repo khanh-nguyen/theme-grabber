@@ -2,8 +2,8 @@
 
     function fixRelative(url, sourceUrl) {
 
-        var hostname = 'http://' + sourceUrl.match(/\/\/([^/]+)(.*)$/)[1];
-        var absolutePath = sourceUrl.replace(/\/([^/]+)$/, '');
+        var hostname = 'http://' + sourceUrl.match(/\/\/([^/]+)(.*)$/)[1]; //abc.com
+        var absolutePath = sourceUrl.replace(/\/([^/]+)$/, '/');   // abc.com/def/ (trailing slash)
 
         //https://a248.e.akamai.net/assets.github.com/f6beba6f5ca2ecc7178182a74ecbc21e08b301e1/stylesheets/bundle_github.css
         //../../images/modules/issues/clear-x.png
@@ -27,10 +27,10 @@
             url = absolutePath + url;
         }
 
-        //replace path/../ with / (run mulitple times because g not helping here)
-        url = url.replace(/\/[^\/]*\/\.\.\//g, '/')
-                .replace(/\/[^\/]*\/\.\.\//g, '/')
-                .replace(/\/[^\/]*\/\.\.\//g, '/');
+        // replace path/../ with / (run mulitple times because g not helping here)
+        // not fully working
+        //url = url.replace(/\/[^\/]*\/\.\.\//g, '/');
+
         return url;
     }
 

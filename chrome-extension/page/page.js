@@ -66,7 +66,7 @@
             var filename = Files.urlToFilename(url);
             if (filename) {
                 imageUrls = Files.add(url, imageUrls);
-                this.src = '{clientUrl}/images/' + filename;
+                this.src = '{{themeUrl}}/assets/' + filename;
             }
         });
 
@@ -86,6 +86,11 @@
         $('style').each(function(){
             var $el = $(this);
             var css = $el.text();
+            
+            // Ignore adblocker css
+            if (css.match(/A9AdsMiddleBoxTop/)) {
+                css = '';
+            }
             var reducedResults = reduce({ data: css, sourceUrl: document.location.origin + document.location.pathname, imageUrls: imageUrls, styleTag: true });
             if (reducedResults.css) {
                 imageUrls = reducedResults.imageUrls;
@@ -145,7 +150,9 @@
         $info.find('[data-action=download]').click(function() {
             $info.remove();
 
-            $($selector.val() || '#NOTHING').html('***Removed****');
+            $($selector.val() || '#NOTHING').html('\n\n\n<!-- *Original Content Removed*--->\n{{{content}}}\n\n\n');
+
+            $('.plugin_remove').removeClass('plugin_remove');
 
             var reduced;
             var originals;

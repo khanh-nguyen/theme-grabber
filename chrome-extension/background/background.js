@@ -73,8 +73,8 @@
 
         if (!debug) {
             zip.add('body.html', content.html);
-            zip.add('theme.css', content.reduced.join('\n'));
-            zip.add('overrides.css', '/* Put overrides in here */');
+            zip.add('assets/theme.css', content.reduced.join('\n'));
+            zip.add('assets/overrides.css', '/* Put overrides in here */');
 
             var duplicateCheck = {};
 
@@ -93,7 +93,7 @@
             var filename = image.filename;
             if (debug && i == 0 || !debug) {
                 log('adding image: ' + filename + ' (' + image.url + ')');
-                zip.add('images/' + filename, image.data, {binary: true} );
+                zip.add('assets/' + filename, image.data, {binary: true} );
             }
         });
 
