@@ -9,9 +9,6 @@
         sendMessage({type: 'log', data: message});
     }
 
-    function onMessage(message) {
-    }
-
     function onRequest(message, sender, sendResponse) {
         switch (message.type) {
             case 'load':
@@ -52,7 +49,6 @@
 
     function onConnect(port) {
         Port = port;
-        Port.onMessage.addListener(onMessage);
     }
 
 
@@ -66,15 +62,15 @@
     }
 
     function createZip(content){
-        log('creating zip');
+        log('creating zip for theme ' + content.themeName);
         var debug = false;
-        try {
         var zip = new JSZip('STORE'); //'DEFLATE'
+        var themeDir = content.themeName + '/';
 
         if (!debug) {
-            zip.add('body.html', content.html);
-            zip.add('assets/theme.css', content.reduced.join('\n'));
-            zip.add('assets/overrides.css', '/* Put overrides in here */');
+            zip.add(themeDir + 'body.html', content.html);
+            zip.add(themeDir + 'assets/theme.css', content.reduced.join('\n'));
+            zip.add(themeDir + 'assets/overrides.css', '/* Put overrides in here */');
 
             var duplicateCheck = {};
 
@@ -85,7 +81,7 @@
                     filename = temp[1] + i + '.' + temp[2];
                 }
                 log('adding stylesheet: ' + filename);
-                zip.add('originals/' + filename, stylesheet.data);
+                zip.add(themeDir + 'originals/' + filename, stylesheet.data);
                 duplicateCheck[filename] = true;
             });
         }
@@ -93,16 +89,12 @@
             var filename = image.filename;
             if (debug && i == 0 || !debug) {
                 log('adding image: ' + filename + ' (' + image.url + ')');
-                zip.add('assets/' + filename, image.data, {binary: true} );
+                zip.add(themeDir + 'assets/' + filename, image.data, {binary: true} );
             }
         });
 
-        log('done adding files to zip');
-        var z = zip.generate();
-        } catch(e) {
-            console.log(e);
-        }
-            return z;
+        log('done adding files to zip. sending to user...');
+        return zip.generate();
     }
 
     function activate(tab) {
@@ -123,7 +115,6 @@
         }
 
         chrome.tabs.insertCSS(Tab.id, { file: 'page/page.css' }, addScript);
-
     }
 
     chrome.extension.onConnect.addListener(onConnect);

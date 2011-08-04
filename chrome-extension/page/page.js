@@ -124,21 +124,33 @@
 
     function createUI() {
 
-        var $info = $('<div class="plugin_info">Snooper' +
+        var $info = $('<div class="plugin_info">' +
+            '<div>' +
+            '<label>Snooper</label>' +
             '<input type="text" placeholder="CSS Selector" data-purpose="selector"/>' +
             '<input type="button" value="Download Theme" data-action="download"/>' +
+            '</div>' +
+            '<div class="plugin_help">' +
+            'Comma-separated nodes to exclude. Use <span class="plugin_fixed">#id</span>, <span class="plugin_fixed">.class</span>, <a href="http://api.jquery.com/category/selectors/" target="_blank">etc</a>' +
+            '</div>' +
             '</div>');
 
         var $selector = $info.find('[data-purpose=selector]');
+
         
         $selector.bind('keyup change', function(){
                 var value = $selector.val().trim();
-                $selector.css({minWidth: value.length * 6});
+                $selector.css({minWidth: value.length * 7});
 
                 $('.plugin_remove').removeClass('plugin_remove');
 
                 try {
                     var $elements = $(value);
+                    if (!$elements.length) {
+                        $selector.addClass('notfound');
+                    } else {
+                        $selector.removeClass('notfound');
+                    }
                     $elements.addClass('plugin_remove');
                     window.localStorage.setItem(SELECTOR_KEY, value);
                 } catch(err) {
@@ -163,13 +175,24 @@
                 reduced = data.reduced;
                 originals = data.originals;
                 loadImages(data.imageUrls, function(err, data) {
-                    chrome.extension.sendRequest({ type: 'zip', html: html(), reduced: reduced, originals: originals, images: data.images  },
+                    chrome.extension.sendRequest({
+                            type:       'zip',
+                            html:       html(),
+                            reduced:    reduced,
+                            originals:  originals,
+                            images:     data.images,
+                            themeName:  document.location.host.replace(/\.[^.]*$/, '').replace(/[^.]*\./, '') || 'theme'
+                        },
                         function(response) {
                             console.log('Ready to download');
                             chrome.extension.sendRequest({ type: 'download'});
                         });
                 });
             });
+        });
+
+        $info.find('label').bind('click', function() {
+            $selector.focus();
         });
 
         $info.appendTo(document.body);
