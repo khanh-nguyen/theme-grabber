@@ -2,12 +2,14 @@
     "name": "Snooper",
     "background_page": "background/background.html",
     "browser_action": {
-        "default_icon": "icons/32.png",
+        "default_icon": "icons/48.jpg",
         "default_title": "Snooper"
     },
     "description": "Snooper",
     "icons": {
-        "32": "icons/32.png"
+        "16": "icons/16.jpg",
+        "48": "icons/48.jpg",
+        "128": "icons/128.jpg"
     },
     "permissions": [ "tabs", "notifications", "http://*/*", "https://*/*" ],
     "version": "0.1"

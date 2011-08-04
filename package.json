@@ -1,6 +1,6 @@
 {
     "name": "blabber",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "description": "Grab the theme from any site - only the css and images used for the theme.",
     "homepage": "http://github.com/dylang",
     "author": "Dylan Greene <dylang@gmail.com>",
