@@ -42,7 +42,7 @@
             if (url) {
                 chrome.extension.sendRequest( {type: 'load', url: url }, function (response) {
                     if (response.data) {
-                        var reducedResults = reduce({ data: response.data, sourceUrl: url, imageUrls: imageUrls });
+                        var reducedResults = stylesheets({ data: response.data, sourceUrl: url, imageUrls: imageUrls });
                         if (reducedResults.css) {
                             reduced.push(reducedResults.css);
                             imageUrls = reducedResults.imageUrls;
@@ -77,7 +77,7 @@
             var $el = $(this);
             var css = $el.attr('style');
 
-            var reducedResults = reduce({ data: css, sourceUrl: document.location.origin + document.location.pathname, imageUrls: imageUrls, inline: true });
+            var reducedResults = stylesheets({ data: css, sourceUrl: document.location.origin + document.location.pathname, imageUrls: imageUrls, inline: true });
             if (reducedResults.css) {
                 imageUrls = reducedResults.imageUrls;
                 $el.attr('style', reducedResults.css);
@@ -93,7 +93,7 @@
             if (css.match(/A9AdsMiddleBoxTop/)) {
                 css = '';
             }
-            var reducedResults = reduce({ data: css, sourceUrl: document.location.origin + document.location.pathname, imageUrls: imageUrls, styleTag: true });
+            var reducedResults = stylesheets({ data: css, sourceUrl: document.location.origin + document.location.pathname, imageUrls: imageUrls, styleTag: true });
             if (reducedResults.css) {
                 imageUrls = reducedResults.imageUrls;
                 $el.text(reducedResults.css);
@@ -195,7 +195,7 @@
             $selector.focus();
         });
 
-        $info.appendTo(document.body);
+        $info.appendTo(document.body).css({top: 20});
     }
 
 

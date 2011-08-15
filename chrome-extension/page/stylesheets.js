@@ -1,5 +1,5 @@
 
-function reduce(options) {
+function stylesheets(options) {
 
     if (!options || !options.data || !options.sourceUrl) {
         console.log('missing data for reduce');

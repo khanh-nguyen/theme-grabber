@@ -40,6 +40,10 @@
             return false;
         }
 
+        if (url.match(/^data:/)) {
+            return '';
+        }
+
         return url
             .trim()                         // remove spaces
             .replace(/^\/\//, 'http://')    // replace leading double slashes with http

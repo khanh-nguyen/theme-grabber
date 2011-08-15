@@ -103,7 +103,7 @@
             'thirdParty/jquery.min.js',
             'thirdParty/CSSOM.js',
             'page/files.js',
-            'page/reduce.js',
+            'page/stylesheets.js',
             'page/page.js'
         ];
 
