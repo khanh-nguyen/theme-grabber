@@ -11,6 +11,9 @@
     function html(){
         //Todo: include tips/hints for templating?
 
+        // Remove iframes
+        $('iframe').remove();
+
         return $('body')
                     .html()
                     //.replace(/href[\s]?=[\s]?"\//g, 'href="' + hostname + '/')
@@ -137,7 +140,53 @@
 
         var $selector = $info.find('[data-purpose=selector]');
 
-        
+        function run (){
+            var reduced;
+            var originals;
+            var pageHTML;
+
+            function loadOriginalHTML (cb) {
+                $.ajax({
+                        url: document.location.url
+                })
+                .complete( function(response){
+                        pageHTML = response.responseText;
+                        cb();
+                });
+            }
+
+            function parsePageContent () {
+                $info.remove();
+                $($selector.val() || '#NOTHING').html('\n\n\n<!-- *Original Content Removed* -->\n{{{content}}}\n\n\n');
+                $('.plugin_remove').removeClass('plugin_remove');
+
+                loadStylesheets(function(err, data){
+                    reduced = data.reduced;
+                    originals = data.originals;
+                    loadImages(data.imageUrls, function(err, data) {
+                        chrome.extension.sendRequest({
+                                type:       'zip',
+                                html:       html(),
+                                reduced:    reduced,
+                                originals:  originals,
+                                pageHTML:   pageHTML,
+                                images:     data.images,
+                                themeName:  document.location.host.replace(/\.[^.]*$/, '').replace(/[^.]*\./, '') || 'theme'
+                            },
+                            function(response) {
+                                console.log('Ready to download');
+                                chrome.extension.sendRequest({ type: 'download'});
+                            });
+                    });
+                });
+            }
+            
+            loadOriginalHTML(parsePageContent);
+
+
+        }
+
+
         $selector.bind('keyup change', function(){
                 var value = $selector.val().trim();
                 $selector.css({minWidth: value.length * 7});
@@ -161,35 +210,7 @@
             .val(window.localStorage.getItem(SELECTOR_KEY))
             .change();
 
-        $info.find('[data-action=download]').click(function() {
-            $info.remove();
-
-            $($selector.val() || '#NOTHING').html('\n\n\n<!-- *Original Content Removed*--->\n{{{content}}}\n\n\n');
-
-            $('.plugin_remove').removeClass('plugin_remove');
-
-            var reduced;
-            var originals;
-
-            loadStylesheets(function(err, data){
-                reduced = data.reduced;
-                originals = data.originals;
-                loadImages(data.imageUrls, function(err, data) {
-                    chrome.extension.sendRequest({
-                            type:       'zip',
-                            html:       html(),
-                            reduced:    reduced,
-                            originals:  originals,
-                            images:     data.images,
-                            themeName:  document.location.host.replace(/\.[^.]*$/, '').replace(/[^.]*\./, '') || 'theme'
-                        },
-                        function(response) {
-                            console.log('Ready to download');
-                            chrome.extension.sendRequest({ type: 'download'});
-                        });
-                });
-            });
-        });
+        $info.find('[data-action=download]').click(run);
 
         $info.find('label').bind('click', function() {
             $selector.focus();

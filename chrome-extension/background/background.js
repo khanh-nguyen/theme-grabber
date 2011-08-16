@@ -63,34 +63,31 @@
 
     function createZip(content){
         log('creating zip for theme ' + content.themeName);
-        var debug = false;
         var zip = new JSZip('STORE'); //'DEFLATE'
         var themeDir = content.themeName + '/';
 
-        if (!debug) {
-            zip.add(themeDir + 'body.html', content.html);
-            zip.add(themeDir + 'assets/theme.css', content.reduced.join('\n'));
-            zip.add(themeDir + 'assets/overrides.css', '/* Put overrides in here */');
 
-            var duplicateCheck = {};
+        zip.add(themeDir + 'body.html', content.html);
+        zip.add(themeDir + 'assets/theme.css', content.reduced.join('\n'));
+        zip.add(themeDir + 'assets/overrides.css', '/* Put overrides in here */');
+        zip.add(themeDir + 'originals/page.html', content.pageHTML);
+        var duplicateCheck = {};
 
-            content.originals.forEach(function(stylesheet, i){
-                var filename = urlToFilename(stylesheet.url)|| 'file' + i + '.css';
-                if (duplicateCheck[filename]) {
-                    var temp = filename.match(/^([^.]*)\.(.*)$/);
-                    filename = temp[1] + i + '.' + temp[2];
-                }
-                log('adding stylesheet: ' + filename);
-                zip.add(themeDir + 'originals/' + filename, stylesheet.data);
-                duplicateCheck[filename] = true;
-            });
-        }
+        content.originals.forEach(function(original, i){
+            var filename = urlToFilename(original.url)|| 'file' + i + '.css';
+            if (duplicateCheck[filename]) {
+                var temp = filename.match(/^([^.]*)\.(.*)$/);
+                filename = temp[1] + i + '.' + temp[2];
+            }
+            log('adding stylesheet: ' + filename);
+            zip.add(themeDir + 'originals/' + filename, original.data);
+            duplicateCheck[filename] = true;
+        });
+
         content.images.forEach(function(image, i) {
             var filename = image.filename;
-            if (debug && i == 0 || !debug) {
-                log('adding image: ' + filename + ' (' + image.url + ')');
-                zip.add(themeDir + 'assets/' + filename, image.data, {binary: true} );
-            }
+            log('adding image: ' + filename + ' (' + image.url + ')');
+            zip.add(themeDir + 'assets/' + filename, image.data, {binary: true} );
         });
 
         log('done adding files to zip. sending to user...');
