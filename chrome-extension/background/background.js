@@ -57,7 +57,7 @@
 
         return url ? ((url.replace(/\?.*/, '')   //remove querystring
                       .match(/\/([^/]*\....)$/)       //remove hostname and path
-                        || [false, false] )[1] || 'noname').replace(/[^\w\.]/gi, '')         //remove non-alphabetical characters
+                        || [false, false] )[1] || '').replace(/[^\w\.]/gi, '')         //remove non-alphabetical characters
                  : false;
     }
 
