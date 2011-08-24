@@ -26,6 +26,7 @@ function stylesheets(options) {
     try {
         stylesheetObject = CSSOM.parse(data);
     }catch(err) {
+        console.log('ERROR ' + err.message);
         console.log('Not able to parse ' + sourceUrl);
         return {};  //TODO: put in message that the file could not be parsed
     }

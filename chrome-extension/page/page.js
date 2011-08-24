@@ -147,7 +147,7 @@
 
             function loadOriginalHTML (cb) {
                 $.ajax({
-                        url: document.location.url
+                        url: document.location.href
                 })
                 .complete( function(response){
                         pageHTML = response.responseText;
