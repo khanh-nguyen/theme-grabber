@@ -2,13 +2,21 @@
 function stylesheets(options) {
 
     if (!options || !options.data || !options.sourceUrl) {
-        console.log('missing data for reduce');
+        console.log('missing data to run stylesheets.js', options);
         return {};
     }
 
     var data = options.data;
     var sourceUrl = options.sourceUrl;
     var imageUrls = options.imageUrls;
+
+    // Remove javascript from PGE's css. WTF pge?
+    data = data.replace(/'" \+ \(location\.pathname\.split\('\/'\)\.slice\(0\,-3\)\.join\('\/'\) \+ '/g, "'");
+    data = data.replace(/'\) \+ "/g, '');
+    data = data.replace(/filter:[^;]*;/g, '');
+    data = data.replace(/behavior:[^;]*;/g, '');
+    data = data.replace(/content:[^;]*;/g, '');
+    data = data.replace(/expression\([^;]*;/g, '');
 
     if (options.inline) {
         // add placeholder so it can be found
@@ -26,7 +34,8 @@ function stylesheets(options) {
     try {
         stylesheetObject = CSSOM.parse(data);
     }catch(err) {
-        console.log('ERROR ' + err.message);
+        console.log('ERROR ' + err.message || err);
+
         console.log('Not able to parse ' + sourceUrl);
         return {};  //TODO: put in message that the file could not be parsed
     }
@@ -50,8 +59,9 @@ function stylesheets(options) {
                 if (alreadyFound) return;
                 selector = selector.trim();
                 var simpleSelector = selector
-                            .replace('* html ', '') //ie hack
-                            .replace('^.ie[6789]', '') //ie hack
+                            .trim()
+                            .replace(/\* html /, '') //ie hack
+                            .replace(/^\.ie[6789]/, '') //ie hack
                             .replace(/:[^\s]*/g, '')
                             .trim(); //:hover, :focus, etc
 

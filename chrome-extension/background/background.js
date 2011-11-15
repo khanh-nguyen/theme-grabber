@@ -51,6 +51,23 @@
         Port = port;
     }
 
+    function tester(body) {
+        return [
+            '<!DOCTYPE html>',
+            '<html>',
+            '<head>',
+            '<meta charset="utf-8" />',
+            '<link href="assets/theme.css" rel="stylesheet" type="text/css"/>',
+            '<link href="assets/overrides.css" rel="stylesheet" type="text/css"/>',
+            '</head>',
+            '<body>',
+            body
+                .replace(/{{themeUrl}}\//g, ''), //remove themeurl
+            '</body>',
+            '</html>'
+        ].join('\n');
+    }
+
 
     function urlToFilename(url) {
         //Todo: clean this up. 
@@ -66,8 +83,10 @@
         var zip = new JSZip('STORE'); //'DEFLATE'
         var themeDir = content.themeName + '/';
 
+        var formattedHTML = prettyPrint(content.html, {max_char: 10000});
 
-        zip.add(themeDir + 'body.html', content.html);
+        zip.add(themeDir + 'body.html', formattedHTML);
+        zip.add(themeDir + 'test.html', tester(formattedHTML));
         zip.add(themeDir + 'assets/theme.css', content.reduced.join('\n'));
         zip.add(themeDir + 'assets/overrides.css', '/* Put overrides in here */');
         zip.add(themeDir + 'originals/page.html', content.pageHTML);
@@ -97,7 +116,7 @@
     function activate(tab) {
         Tab = tab;
         var clientScripts = [
-            'thirdParty/jquery.min.js',
+            'thirdParty/jquery.js',
             'thirdParty/CSSOM.js',
             'page/files.js',
             'page/stylesheets.js',

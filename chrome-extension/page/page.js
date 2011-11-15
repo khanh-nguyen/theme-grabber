@@ -14,7 +14,15 @@
         // Remove iframes
         $('iframe').remove();
 
-        return $('body')
+        // Remove javascript
+        $('script').remove();
+
+        // Remove hidden elements
+        $('body :hidden').remove();
+
+        var bodyClassNames = $('body').attr('class');
+
+        var html = $('body')
                     .html()
                     //.replace(/href[\s]?=[\s]?"\//g, 'href="' + hostname + '/')
                     //.replace(/action[\s]?=[\s]?"\//g, 'action="' + hostname + '/')
@@ -22,11 +30,14 @@
                     .replace(/\t/g, '    ')
                     .replace(/\xA9/g, '&copy;') //TODO: trademark and other unicode characters
                     .replace(/\xAE/, '&reg;')
-                    .replace(/\n[\s]*\n/gs, '\n')
+                    .replace(/\n[\s]*\n/g, '\n')
                     .replace(/[^A-Za-z0-9<>:.;+\-"(){_}=\[\]\t\s\r\n\/\*!\'\&\#\%,\?\$\`~|]/g, '') // kill all non ascii
-                    .replace(/<script/g, '<!-- <script') //disable all scripts
-                    .replace(/<\/script>/g, '</' + 'script> -->')
+                    //.replace(/<script/g, '<!-- <script') //disable all scripts
+                    //.replace(/<\/script>/g, '</' + 'script> -->')
                     .trim();
+
+        return bodyClassNames ? '<div class="' + bodyClassNames + '">\n' + html + '\n</div>'
+                : html;
     }
 
     function loadStylesheets(cb) {
@@ -180,10 +191,7 @@
                     });
                 });
             }
-            
             loadOriginalHTML(parsePageContent);
-
-
         }
 
 
@@ -194,7 +202,7 @@
                 $('.plugin_remove').removeClass('plugin_remove');
 
                 try {
-                    var $elements = $(value);
+                    var $elements = $(value).not('.plugin_info, .plugin_info *');
                     if (!$elements.length) {
                         $selector.addClass('notfound');
                     } else {

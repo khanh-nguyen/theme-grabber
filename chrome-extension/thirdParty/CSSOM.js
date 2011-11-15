@@ -237,7 +237,7 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 			j = i + 1;
 			index = ruleText.indexOf('"', j) + 1;
 			if (!index) {
-				throw '" is missing';
+				throw new Error('" is missing');
 			}
 			buffer += ruleText.slice(i, index);
 			i = index - 1;
@@ -247,7 +247,7 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 			j = i + 1;
 			index = ruleText.indexOf("'", j) + 1;
 			if (!index) {
-				throw "' is missing";
+				throw new Error("' is missing");
 			}
 			buffer += ruleText.slice(i, index);
 			i = index - 1;
@@ -259,7 +259,7 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 				i += 2;
 				index = ruleText.indexOf("*/", i);
 				if (index == -1) {
-					throw SyntaxError("Missing */");
+					throw new Error("Missing */");
 				} else {
 					i = index + 1;
 				}
@@ -393,7 +393,7 @@ CSSOM.CSSImportRule.prototype.__defineSetter__("cssText", function(cssText) {
 				if (state == 'url' && cssText.indexOf('url(', i) == i) {
 					index = cssText.indexOf(')', i + 1);
 					if (index == -1) {
-						throw i + ': ")" not found';
+						throw new Error(i + ': ")" not found');
 					}
 					i += 'url('.length;
 					var url = cssText.slice(i, index);
@@ -412,7 +412,7 @@ CSSOM.CSSImportRule.prototype.__defineSetter__("cssText", function(cssText) {
 				if (state == 'url') {
 					index = cssText.indexOf('"', i + 1);
 					if (!index) {
-						throw i + ": '\"' not found";
+						throw new Error(i + ": '\"' not found");
 					}
 					this.href = cssText.slice(i + 1, index);
 					i = index;
@@ -424,7 +424,7 @@ CSSOM.CSSImportRule.prototype.__defineSetter__("cssText", function(cssText) {
 				if (state == 'url') {
 					index = cssText.indexOf("'", i + 1);
 					if (!index) {
-						throw i + ': "\'" not found';
+						throw new Error(i + ': "\'" not found');
 					}
 					this.href = cssText.slice(i + 1, index);
 					i = index;
@@ -622,7 +622,7 @@ CSSOM.CSSStyleSheet.prototype.constructor = CSSOM.CSSStyleSheet;
  */
 CSSOM.CSSStyleSheet.prototype.insertRule = function(rule, index) {
 	if (index < 0 || index > this.cssRules.length) {
-		throw new RangeError("INDEX_SIZE_ERR")
+		throw new Error("INDEX_SIZE_ERR")
 	}
 	this.cssRules.splice(index, 0, CSSOM.CSSStyleRule.parse(rule));
 	return index
@@ -645,7 +645,7 @@ CSSOM.CSSStyleSheet.prototype.insertRule = function(rule, index) {
  */
 CSSOM.CSSStyleSheet.prototype.deleteRule = function(index) {
 	if (index < 0 || index >= this.cssRules.length) {
-		throw new RangeError("INDEX_SIZE_ERR");
+		throw new Error("INDEX_SIZE_ERR");
 	}
 	this.cssRules.splice(index, 1);
 };
@@ -726,7 +726,15 @@ CSSOM.parse = function parse(token, options) {
 			j = i + 1;
 			index = token.indexOf('"', j) + 1;
 			if (!index) {
-				throw '" is missing';
+				throw new Error(['Found a random " with no matching pair.',
+                    '=============================',
+                    token.substr(j),
+                    '=============================',
+                    state,
+                    '=============================',
+                    buffer,
+                    '============================='
+                ].join('\n'));
 			}
 			buffer += token.slice(i, index);
 			i = index - 1;
@@ -744,7 +752,7 @@ CSSOM.parse = function parse(token, options) {
 			j = i + 1;
 			index = token.indexOf("'", j) + 1;
 			if (!index) {
-				throw "' is missing";
+				throw new Error("' is missing");
 			}
 			buffer += token.slice(i, index);
 			i = index - 1;
@@ -764,7 +772,7 @@ CSSOM.parse = function parse(token, options) {
 				i += 2;
 				index = token.indexOf("*/", i);
 				if (index == -1) {
-					throw SyntaxError("Missing */");
+					throw new Error("Missing */");
 				} else {
 					i = index + 1;
 				}
@@ -845,7 +853,7 @@ CSSOM.parse = function parse(token, options) {
 			if (state == 'value') {
 				index = token.indexOf(')', i + 1);
 				if (index == -1) {
-					throw i + ': unclosed "("';
+					throw new Error(i + ': unclosed "("');
 				}
 				buffer += token.slice(i, index + 1);
 				i = index;
@@ -912,7 +920,7 @@ CSSOM.parse = function parse(token, options) {
 					// End of media rule.
 					// Nesting rules aren't supported yet
 					if (!currentScope.parentRule) {
-						throw "unexpected }";
+						throw new Error("unexpected }");
 					}
 					currentScope.__ends = i + 1;
 					currentScope.parentRule.cssRules.push(currentScope);
