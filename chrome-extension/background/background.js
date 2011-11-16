@@ -69,6 +69,32 @@
     }
 
 
+    function sample() {
+        return [
+            '{{{content}}} - the body of the page. notice three { } so that it is not html escaped.',
+            '{{pageName}} - unique id for the page. used to show which tab is active.  usually not needed.',
+            '{{clientName}} - client id. usually not needed',
+            '{{clientUrl}} - url to client web site',
+            '{{#loggedIn}} User is logged in {{/loggedIn}}',
+            '{{^loggedIn}} User is not logged in {{/loggedIn}}',
+            '{{#navBar}} - Loop through all the navbar entries.',
+            '<li {{#active}}class="active"{{/active}}> - active tab',
+            '<a href="{{url}}"> - tab url',
+            '{{label}}</a></li> - tab label',
+            '{{/navBar}} - End of Navbar',
+            '{{#hasActiveSubNav}} - If there is a subnav.',
+            '  {{#activeSubNav}} - loop through all the subnav entries.',
+            '    <li {{#active}}data-nav-secondary-state="active" class="active"{{/active}}>',
+            '    <a href="{{url}}" id="{{id}}" class="rounded-tl rounded-tr">{{label}}</a>',
+            '  {{/activeSubNav}}',
+            '{{/hasActiveSubNav}}',
+            '{{^hasActiveSubNav}} - visible when there is not an sub nav',
+            '{{/hasActiveSubNav}}'
+
+        ].join('\n');
+    }
+
+
     function urlToFilename(url) {
         //Todo: clean this up. 
 
@@ -87,6 +113,7 @@
 
         zip.add(themeDir + 'body.html', formattedHTML);
         zip.add(themeDir + 'test.html', tester(formattedHTML));
+        zip.add(themeDir + 'codes.txt', sample());
         zip.add(themeDir + 'assets/theme.css', content.reduced.join('\n'));
         zip.add(themeDir + 'assets/overrides.css', '/* Put overrides in here */');
         zip.add(themeDir + 'originals/page.html', content.pageHTML);
