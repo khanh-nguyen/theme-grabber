@@ -333,11 +333,7 @@
           if (typeof temp_token !== 'string') {
             return temp_token;
           }
-          token = js_beautify(temp_token.replace(/^[\r\n]+/, ''), {
-            'indent_size': this.indent_size,
-            'indent_char': this.indent_character,
-            'brace_style': this.brace_style
-          }); //call the JS Beautifier
+          token = temp_token;
           return [token, 'TK_CONTENT'];
         }
         if (this.current_mode === 'CONTENT') {

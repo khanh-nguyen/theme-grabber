@@ -1,12 +1,13 @@
+'use strict';
+
 var CSSOM = {};
-
-
 /**
  * @constructor
  * @see http://www.w3.org/TR/DOM-Level-2-Style/css.html#CSS-CSSStyleDeclaration
  */
 CSSOM.CSSStyleDeclaration = function CSSStyleDeclaration(){
 	this.length = 0;
+	this.parentRule = null;
 
 	// NON-STANDARD
 	this._importants = {};
@@ -21,11 +22,11 @@ CSSOM.CSSStyleDeclaration.prototype = {
 	 *
 	 * @param {string} name
 	 * @see http://www.w3.org/TR/DOM-Level-2-Style/css.html#CSS-CSSStyleDeclaration-getPropertyValue
-	 * @return {string} the value of the property if it has been explicitly set for this declaration block. 
+	 * @return {string} the value of the property if it has been explicitly set for this declaration block.
 	 * Returns the empty string if the property has not been set.
 	 */
 	getPropertyValue: function(name) {
-		return this[name] || ""
+		return this[name] || "";
 	},
 
 	/**
@@ -61,11 +62,11 @@ CSSOM.CSSStyleDeclaration.prototype = {
 	 */
 	removeProperty: function(name) {
 		if (!(name in this)) {
-			return ""
+			return "";
 		}
 		var index = Array.prototype.indexOf.call(this, name);
 		if (index < 0) {
-			return ""
+			return "";
 		}
 		var prevValue = this[name];
 		this[name] = "";
@@ -76,7 +77,7 @@ CSSOM.CSSStyleDeclaration.prototype = {
 		// That's what Firefox does
 		//this[index] = ""
 
-		return prevValue
+		return prevValue;
 	},
 
 	getPropertyCSSValue: function() {
@@ -117,9 +118,25 @@ CSSOM.CSSStyleDeclaration.prototype = {
 			}
 			properties[i] = name + ": " + value + priority + ";";
 		}
-		return properties.join(" ")
-	}
+		return properties.join(" ");
+	},
 
+	set cssText(cssText){
+		var i, name;
+		for (i = this.length; i--;) {
+			name = this[i];
+			this[name] = "";
+		}
+		Array.prototype.splice.call(this, 0, this.length);
+		this._importants = {};
+
+		var dummyRule = CSSOM.parse('#bogus{' + cssText + '}').cssRules[0].style;
+		var length = dummyRule.length;
+		for (i = 0; i < length; ++i) {
+			name = dummyRule[i];
+			this.setProperty(dummyRule[i], dummyRule.getPropertyValue(name), dummyRule.getPropertyPriority(name));
+		}
+	}
 };
 
 
@@ -131,6 +148,7 @@ CSSOM.CSSStyleDeclaration.prototype = {
  */
 CSSOM.CSSRule = function CSSRule() {
 	this.parentRule = null;
+	this.parentStyleSheet = null;
 };
 
 CSSOM.CSSRule.STYLE_RULE = 1;
@@ -161,8 +179,10 @@ CSSOM.CSSRule.prototype = {
  * @see http://www.w3.org/TR/DOM-Level-2-Style/css.html#CSS-CSSStyleRule
  */
 CSSOM.CSSStyleRule = function CSSStyleRule() {
+	CSSOM.CSSRule.call(this);
 	this.selectorText = "";
 	this.style = new CSSOM.CSSStyleDeclaration;
+	this.style.parentRule = this;
 };
 
 CSSOM.CSSStyleRule.prototype = new CSSOM.CSSRule;
@@ -237,7 +257,7 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 			j = i + 1;
 			index = ruleText.indexOf('"', j) + 1;
 			if (!index) {
-				throw new Error('" is missing');
+				throw '" is missing';
 			}
 			buffer += ruleText.slice(i, index);
 			i = index - 1;
@@ -247,7 +267,7 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 			j = i + 1;
 			index = ruleText.indexOf("'", j) + 1;
 			if (!index) {
-				throw new Error("' is missing");
+				throw "' is missing";
 			}
 			buffer += ruleText.slice(i, index);
 			i = index - 1;
@@ -255,11 +275,11 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 
 		// Comment
 		case "/":
-			if (ruleText.charAt(i + 1) == "*") {
+			if (ruleText.charAt(i + 1) === "*") {
 				i += 2;
 				index = ruleText.indexOf("*/", i);
-				if (index == -1) {
-					throw new Error("Missing */");
+				if (index === -1) {
+					throw new SyntaxError("Missing */");
 				} else {
 					i = index + 1;
 				}
@@ -269,7 +289,7 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 			break;
 
 		case "{":
-			if (state == "selector") {
+			if (state === "selector") {
 				styleRule.selectorText = buffer.trim();
 				buffer = "";
 				state = "name";
@@ -277,7 +297,7 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 			break;
 
 		case ":":
-			if (state == "name") {
+			if (state === "name") {
 				name = buffer.trim();
 				buffer = "";
 				state = "value";
@@ -287,7 +307,7 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 			break;
 
 		case "!":
-			if (state == "value" && ruleText.indexOf("!important", i) === i) {
+			if (state === "value" && ruleText.indexOf("!important", i) === i) {
 				priority = "important";
 				i += "important".length;
 			} else {
@@ -296,7 +316,7 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 			break;
 
 		case ";":
-			if (state == "value") {
+			if (state === "value") {
 				styleRule.style.setProperty(name, buffer.trim(), priority);
 				priority = "";
 				buffer = "";
@@ -307,11 +327,11 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 			break;
 
 		case "}":
-			if (state == "value") {
+			if (state === "value") {
 				styleRule.style.setProperty(name, buffer.trim(), priority);
 				priority = "";
 				buffer = "";
-			} else if (state == "name") {
+			} else if (state === "name") {
 				break;
 			} else {
 				buffer += character;
@@ -329,125 +349,6 @@ CSSOM.CSSStyleRule.parse = function(ruleText) {
 	return styleRule;
 
 };
-
-
-
-/**
- * @constructor
- * @see http://dev.w3.org/csswg/cssom/#cssimportrule
- * @see http://www.w3.org/TR/DOM-Level-2-Style/css.html#CSS-CSSImportRule
- */
-CSSOM.CSSImportRule = function CSSImportRule() {
-	this.href = "";
-	this.media = new CSSOM.MediaList;
-	this.styleSheet = new CSSOM.CSSStyleSheet;
-};
-
-CSSOM.CSSImportRule.prototype = new CSSOM.CSSRule;
-CSSOM.CSSImportRule.prototype.constructor = CSSOM.CSSImportRule;
-CSSOM.CSSImportRule.prototype.type = 3;
-CSSOM.CSSImportRule.prototype.__defineGetter__("cssText", function() {
-	var mediaText = this.media.mediaText;
-	return "@import url(" + this.href + ")" + (mediaText ? " " + mediaText : "") + ";";
-});
-
-CSSOM.CSSImportRule.prototype.__defineSetter__("cssText", function(cssText) {
-	var i = 0;
-
-	/**
-	 * @import url(partial.css) screen, handheld;
-	 *        ||               |
-	 *        after-import     media
-	 *         |
-	 *         url
-	 */
-	var state = '';
-
-	var buffer = '';
-	var index;
-	var mediaText = '';
-	for (var character; character = cssText.charAt(i); i++) {
-
-		switch (character) {
-			case ' ':
-			case '\t':
-			case '\r':
-			case '\n':
-			case '\f':
-				if (state == 'after-import') {
-					state = 'url';
-				} else {
-					buffer += character;
-				}
-				break;
-
-			case '@':
-				if (!state && cssText.indexOf('@import', i) == i) {
-					state = 'after-import';
-					i += 'import'.length;
-					buffer = '';
-				}
-				break;
-
-			case 'u':
-				if (state == 'url' && cssText.indexOf('url(', i) == i) {
-					index = cssText.indexOf(')', i + 1);
-					if (index == -1) {
-						throw new Error(i + ': ")" not found');
-					}
-					i += 'url('.length;
-					var url = cssText.slice(i, index);
-					if (url[0] === url[url.length - 1]) {
-						if (url[0] == '"' || url[0] == "'") {
-							url = url.slice(1, -1);
-						}
-					}
-					this.href = url;
-					i = index;
-					state = 'media';
-				}
-				break;
-
-			case '"':
-				if (state == 'url') {
-					index = cssText.indexOf('"', i + 1);
-					if (!index) {
-						throw new Error(i + ": '\"' not found");
-					}
-					this.href = cssText.slice(i + 1, index);
-					i = index;
-					state = 'media';
-				}
-				break;
-
-			case "'":
-				if (state == 'url') {
-					index = cssText.indexOf("'", i + 1);
-					if (!index) {
-						throw new Error(i + ': "\'" not found');
-					}
-					this.href = cssText.slice(i + 1, index);
-					i = index;
-					state = 'media';
-				}
-				break;
-
-			case ';':
-				if (state == 'media') {
-					if (buffer) {
-						this.media.mediaText = buffer.trim();
-					}
-				}
-				break;
-
-			default:
-				if (state == 'media') {
-					buffer += character;
-				}
-				break;
-		}
-	}
-});
 
 
 
@@ -485,7 +386,7 @@ CSSOM.MediaList.prototype = {
 	 * @param {string} medium
 	 */
 	appendMedium: function(medium) {
-		if (Array.prototype.indexOf.call(this, medium) == -1) {
+		if (Array.prototype.indexOf.call(this, medium) === -1) {
 			this[this.length] = medium;
 			this.length++;
 		}
@@ -496,11 +397,11 @@ CSSOM.MediaList.prototype = {
 	 */
 	deleteMedium: function(medium) {
 		var index = Array.prototype.indexOf.call(this, medium);
-		if (index != -1) {
+		if (index !== -1) {
 			Array.prototype.splice.call(this, index, 1);
 		}
 	}
-	
+
 };
 
 
@@ -511,6 +412,7 @@ CSSOM.MediaList.prototype = {
  * @see http://www.w3.org/TR/DOM-Level-2-Style/css.html#CSS-CSSMediaRule
  */
 CSSOM.CSSMediaRule = function CSSMediaRule() {
+	CSSOM.CSSRule.call(this);
 	this.media = new CSSOM.MediaList;
 	this.cssRules = [];
 };
@@ -528,57 +430,127 @@ CSSOM.CSSMediaRule.prototype.__defineGetter__("cssText", function() {
 	for (var i=0, length=this.cssRules.length; i < length; i++) {
 		cssTexts.push(this.cssRules[i].cssText);
 	}
-	return "@media " + this.media.mediaText + " {" + cssTexts.join("") + "}"
+	return "@media " + this.media.mediaText + " {" + cssTexts.join("") + "}";
 });
 
 
 
 /**
  * @constructor
- * @see http://www.w3.org/TR/css3-animations/#DOM-CSSKeyframesRule
+ * @see http://dev.w3.org/csswg/cssom/#cssimportrule
+ * @see http://www.w3.org/TR/DOM-Level-2-Style/css.html#CSS-CSSImportRule
  */
-CSSOM.CSSKeyframesRule = function CSSKeyframesRule() {
-	this.name = '';
-	this.cssRules = [];
+CSSOM.CSSImportRule = function CSSImportRule() {
+	CSSOM.CSSRule.call(this);
+	this.href = "";
+	this.media = new CSSOM.MediaList;
+	this.styleSheet = new CSSOM.CSSStyleSheet;
 };
 
-CSSOM.CSSKeyframesRule.prototype = new CSSOM.CSSRule;
-CSSOM.CSSKeyframesRule.prototype.constructor = CSSOM.CSSKeyframesRule;
-CSSOM.CSSKeyframesRule.prototype.type = 8;
-//FIXME
-//CSSOM.CSSKeyframesRule.prototype.insertRule = CSSStyleSheet.prototype.insertRule;
-//CSSOM.CSSKeyframesRule.prototype.deleteRule = CSSStyleSheet.prototype.deleteRule;
+CSSOM.CSSImportRule.prototype = new CSSOM.CSSRule;
+CSSOM.CSSImportRule.prototype.constructor = CSSOM.CSSImportRule;
+CSSOM.CSSImportRule.prototype.type = 3;
+CSSOM.CSSImportRule.prototype.__defineGetter__("cssText", function() {
+	var mediaText = this.media.mediaText;
+	return "@import url(" + this.href + ")" + (mediaText ? " " + mediaText : "") + ";";
+});
 
-// http://www.opensource.apple.com/source/WebCore/WebCore-955.66.1/css/WebKitCSSKeyframesRule.cpp
-CSSOM.CSSKeyframesRule.prototype.__defineGetter__("cssText", function() {
-	var cssTexts = [];
-	for (var i=0, length=this.cssRules.length; i < length; i++) {
-		cssTexts.push("  " + this.cssRules[i].cssText);
+CSSOM.CSSImportRule.prototype.__defineSetter__("cssText", function(cssText) {
+	var i = 0;
+
+	/**
+	 * @import url(partial.css) screen, handheld;
+	 *        ||               |
+	 *        after-import     media
+	 *         |
+	 *         url
+	 */
+	var state = '';
+
+	var buffer = '';
+	var index;
+	var mediaText = '';
+	for (var character; character = cssText.charAt(i); i++) {
+
+		switch (character) {
+			case ' ':
+			case '\t':
+			case '\r':
+			case '\n':
+			case '\f':
+				if (state === 'after-import') {
+					state = 'url';
+				} else {
+					buffer += character;
+				}
+				break;
+
+			case '@':
+				if (!state && cssText.indexOf('@import', i) === i) {
+					state = 'after-import';
+					i += 'import'.length;
+					buffer = '';
+				}
+				break;
+
+			case 'u':
+				if (state === 'url' && cssText.indexOf('url(', i) === i) {
+					index = cssText.indexOf(')', i + 1);
+					if (index === -1) {
+						throw i + ': ")" not found';
+					}
+					i += 'url('.length;
+					var url = cssText.slice(i, index);
+					if (url[0] === url[url.length - 1]) {
+						if (url[0] === '"' || url[0] === "'") {
+							url = url.slice(1, -1);
+						}
+					}
+					this.href = url;
+					i = index;
+					state = 'media';
+				}
+				break;
+
+			case '"':
+				if (state === 'url') {
+					index = cssText.indexOf('"', i + 1);
+					if (!index) {
+						throw i + ": '\"' not found";
+					}
+					this.href = cssText.slice(i + 1, index);
+					i = index;
+					state = 'media';
+				}
+				break;
+
+			case "'":
+				if (state === 'url') {
+					index = cssText.indexOf("'", i + 1);
+					if (!index) {
+						throw i + ': "\'" not found';
+					}
+					this.href = cssText.slice(i + 1, index);
+					i = index;
+					state = 'media';
+				}
+				break;
+
+			case ';':
+				if (state === 'media') {
+					if (buffer) {
+						this.media.mediaText = buffer.trim();
+					}
+				}
+				break;
+
+			default:
+				if (state === 'media') {
+					buffer += character;
+				}
+				break;
+		}
 	}
-	return "@-webkit-keyframes " + this.name + " { \n" + cssTexts.join("\n") + "\n}"
-});
-
-
-
-/**
- * @constructor
- * @see http://www.w3.org/TR/css3-animations/#DOM-CSSKeyframeRule
- */
-CSSOM.CSSKeyframeRule = function CSSKeyframeRule() {
-	this.keyText = '';
-	this.style = new CSSOM.CSSStyleDeclaration;
-};
-
-CSSOM.CSSKeyframeRule.prototype = new CSSOM.CSSRule;
-CSSOM.CSSKeyframeRule.prototype.constructor = CSSOM.CSSKeyframeRule;
-CSSOM.CSSKeyframeRule.prototype.type = 9;
-//FIXME
-//CSSOM.CSSKeyframeRule.prototype.insertRule = CSSStyleSheet.prototype.insertRule;
-//CSSOM.CSSKeyframeRule.prototype.deleteRule = CSSStyleSheet.prototype.deleteRule;
-
-// http://www.opensource.apple.com/source/WebCore/WebCore-955.66.1/css/WebKitCSSKeyframeRule.cpp
-CSSOM.CSSKeyframeRule.prototype.__defineGetter__("cssText", function() {
-	return this.keyText + " { " + this.style.cssText + " } ";
 });
 
 
@@ -587,7 +559,9 @@ CSSOM.CSSKeyframeRule.prototype.__defineGetter__("cssText", function() {
  * @constructor
  * @see http://dev.w3.org/csswg/cssom/#the-stylesheet-interface
  */
-CSSOM.StyleSheet = function StyleSheet(){};
+CSSOM.StyleSheet = function StyleSheet() {
+	this.parentStyleSheet = null;
+};
 
 
 
@@ -596,6 +570,7 @@ CSSOM.StyleSheet = function StyleSheet(){};
  * @see http://www.w3.org/TR/DOM-Level-2-Style/css.html#CSS-CSSStyleSheet
  */
 CSSOM.CSSStyleSheet = function CSSStyleSheet() {
+	CSSOM.StyleSheet.call(this);
 	this.cssRules = [];
 };
 
@@ -622,10 +597,10 @@ CSSOM.CSSStyleSheet.prototype.constructor = CSSOM.CSSStyleSheet;
  */
 CSSOM.CSSStyleSheet.prototype.insertRule = function(rule, index) {
 	if (index < 0 || index > this.cssRules.length) {
-		throw new Error("INDEX_SIZE_ERR")
+		throw new RangeError("INDEX_SIZE_ERR");
 	}
 	this.cssRules.splice(index, 0, CSSOM.CSSStyleRule.parse(rule));
-	return index
+	return index;
 };
 
 
@@ -639,13 +614,12 @@ CSSOM.CSSStyleSheet.prototype.insertRule = function(rule, index) {
  *   sheet.toString()
  *   -> "body{margin:0;}"
  *
- * @param {number} index
+ * @param {number} index within the style sheet's rule list of the rule to remove.
  * @see http://www.w3.org/TR/DOM-Level-2-Style/css.html#CSS-CSSStyleSheet-deleteRule
- * @return {number} The index within the style sheet's rule list of the rule to remove.
  */
 CSSOM.CSSStyleSheet.prototype.deleteRule = function(index) {
 	if (index < 0 || index >= this.cssRules.length) {
-		throw new Error("INDEX_SIZE_ERR");
+		throw new RangeError("INDEX_SIZE_ERR");
 	}
 	this.cssRules.splice(index, 1);
 };
@@ -667,13 +641,64 @@ CSSOM.CSSStyleSheet.prototype.toString = function() {
 
 
 /**
- * @param {string} token
- * @param {Object} [options]
+ * @constructor
+ * @see http://www.w3.org/TR/css3-animations/#DOM-CSSKeyframesRule
  */
-CSSOM.parse = function parse(token, options) {
+CSSOM.CSSKeyframesRule = function CSSKeyframesRule() {
+	CSSOM.CSSRule.call(this);
+	this.name = '';
+	this.cssRules = [];
+};
 
-	options = options || {};
-	var i = options.startIndex || 0;
+CSSOM.CSSKeyframesRule.prototype = new CSSOM.CSSRule;
+CSSOM.CSSKeyframesRule.prototype.constructor = CSSOM.CSSKeyframesRule;
+CSSOM.CSSKeyframesRule.prototype.type = 8;
+//FIXME
+//CSSOM.CSSKeyframesRule.prototype.insertRule = CSSStyleSheet.prototype.insertRule;
+//CSSOM.CSSKeyframesRule.prototype.deleteRule = CSSStyleSheet.prototype.deleteRule;
+
+// http://www.opensource.apple.com/source/WebCore/WebCore-955.66.1/css/WebKitCSSKeyframesRule.cpp
+CSSOM.CSSKeyframesRule.prototype.__defineGetter__("cssText", function() {
+	var cssTexts = [];
+	for (var i=0, length=this.cssRules.length; i < length; i++) {
+		cssTexts.push("  " + this.cssRules[i].cssText);
+	}
+	return "@-webkit-keyframes " + this.name + " { \n" + cssTexts.join("\n") + "\n}";
+});
+
+
+
+/**
+ * @constructor
+ * @see http://www.w3.org/TR/css3-animations/#DOM-CSSKeyframeRule
+ */
+CSSOM.CSSKeyframeRule = function CSSKeyframeRule() {
+	CSSOM.CSSRule.call(this);
+	this.keyText = '';
+	this.style = new CSSOM.CSSStyleDeclaration;
+	this.style.parentRule = this;
+};
+
+CSSOM.CSSKeyframeRule.prototype = new CSSOM.CSSRule;
+CSSOM.CSSKeyframeRule.prototype.constructor = CSSOM.CSSKeyframeRule;
+CSSOM.CSSKeyframeRule.prototype.type = 9;
+//FIXME
+//CSSOM.CSSKeyframeRule.prototype.insertRule = CSSStyleSheet.prototype.insertRule;
+//CSSOM.CSSKeyframeRule.prototype.deleteRule = CSSStyleSheet.prototype.deleteRule;
+
+// http://www.opensource.apple.com/source/WebCore/WebCore-955.66.1/css/WebKitCSSKeyframeRule.cpp
+CSSOM.CSSKeyframeRule.prototype.__defineGetter__("cssText", function() {
+	return this.keyText + " { " + this.style.cssText + " } ";
+});
+
+
+
+/**
+ * @param {string} token
+ */
+CSSOM.parse = function parse(token) {
+
+	var i = 0;
 
 	/**
 	  "before-selector" or
@@ -685,10 +710,9 @@ CSSOM.parse = function parse(token, options) {
 	  "before-value" or
 	  "value"
 	*/
-	var state = options.state || "before-selector";
+	var state = "before-selector";
 
 	var index;
-	var j = i;
 	var buffer = "";
 
 	var SIGNIFICANT_WHITESPACE = {
@@ -702,9 +726,12 @@ CSSOM.parse = function parse(token, options) {
 
 	var styleSheet = new CSSOM.CSSStyleSheet;
 
-	// @type CSSStyleSheet|CSSMediaRule
+	// @type CSSStyleSheet|CSSMediaRule|CSSKeyframesRule
 	var currentScope = styleSheet;
-	
+
+	// @type CSSMediaRule|CSSKeyframesRule
+	var parentRule;
+
 	var selector, name, value, priority="", styleRule, mediaRule, importRule, keyframesRule, keyframeRule;
 
 	for (var character; character = token.charAt(i); i++) {
@@ -723,18 +750,9 @@ CSSOM.parse = function parse(token, options) {
 
 		// String
 		case '"':
-			j = i + 1;
-			index = token.indexOf('"', j) + 1;
+			index = token.indexOf('"', i + 1) + 1;
 			if (!index) {
-				throw new Error(['Found a random " with no matching pair.',
-                    '=============================',
-                    token.substr(j),
-                    '=============================',
-                    state,
-                    '=============================',
-                    buffer,
-                    '============================='
-                ].join('\n'));
+				throw '" is missing';
 			}
 			buffer += token.slice(i, index);
 			i = index - 1;
@@ -749,10 +767,9 @@ CSSOM.parse = function parse(token, options) {
 			break;
 
 		case "'":
-			j = i + 1;
-			index = token.indexOf("'", j) + 1;
+			index = token.indexOf("'", i + 1) + 1;
 			if (!index) {
-				throw new Error("' is missing");
+				throw "' is missing";
 			}
 			buffer += token.slice(i, index);
 			i = index - 1;
@@ -768,18 +785,18 @@ CSSOM.parse = function parse(token, options) {
 
 		// Comment
 		case "/":
-			if (token.charAt(i + 1) == "*") {
+			if (token.charAt(i + 1) === "*") {
 				i += 2;
 				index = token.indexOf("*/", i);
-				if (index == -1) {
-					throw new Error("Missing */");
+				if (index === -1) {
+					throw new SyntaxError("Missing */");
 				} else {
 					i = index + 1;
 				}
 			} else {
 				buffer += character;
 			}
-			if (state == "importRule-begin") {
+			if (state === "importRule-begin") {
 				buffer += " ";
 				state = "importRule";
 			}
@@ -787,52 +804,55 @@ CSSOM.parse = function parse(token, options) {
 
 		// At-rule
 		case "@":
-			if (token.indexOf("@media", i) == i) {
+			if (token.indexOf("@media", i) === i) {
 				state = "atBlock";
 				mediaRule = new CSSOM.CSSMediaRule;
 				mediaRule.__starts = i;
 				i += "media".length;
 				buffer = "";
 				break;
-			} else if (token.indexOf("@import", i) == i) {
+			} else if (token.indexOf("@import", i) === i) {
 				state = "importRule-begin";
 				i += "import".length;
 				buffer += "@import";
 				break;
-			} else if (token.indexOf("@-webkit-keyframes", i) == i) {
+			} else if (token.indexOf("@-webkit-keyframes", i) === i) {
 				state = "keyframesRule-begin";
 				keyframesRule = new CSSOM.CSSKeyframesRule;
 				keyframesRule.__starts = i;
 				i += "-webkit-keyframes".length;
 				buffer = "";
 				break;
-			} else if (state == "selector") {
+			} else if (state === "selector") {
 				state = "atRule";
 			}
 			buffer += character;
 			break;
 
 		case "{":
-			if (state == "selector" || state == "atRule") {
-				styleRule.selectorText = buffer.trimRight();
+			if (state === "selector" || state === "atRule") {
+				styleRule.selectorText = buffer.trim();
 				styleRule.style.__starts = i;
 				buffer = "";
 				state = "before-name";
-			} else if (state == "atBlock") {
+			} else if (state === "atBlock") {
 				mediaRule.media.mediaText = buffer.trim();
-				mediaRule.parentRule = currentScope;
-				currentScope = mediaRule;
+				currentScope = parentRule = mediaRule;
+				mediaRule.parentStyleSheet = styleSheet;
 				buffer = "";
 				state = "before-selector";
-			} else if (state == "keyframesRule-begin") {
-				keyframesRule.name = buffer.trimRight();
-				keyframesRule.parentRule = currentScope;
-				currentScope = keyframesRule;
+			} else if (state === "keyframesRule-begin") {
+				keyframesRule.name = buffer.trim();
+				if (parentRule) {
+					keyframesRule.parentRule = parentRule;
+				}
+				keyframesRule.parentStyleSheet = styleSheet;
+				currentScope = parentRule = keyframesRule;
 				buffer = "";
 				state = "keyframeRule-begin";
-			} else if (state == "keyframeRule-begin") {
+			} else if (state === "keyframeRule-begin") {
 				styleRule = new CSSOM.CSSKeyframeRule;
-				styleRule.keyText = buffer.trimRight();
+				styleRule.keyText = buffer.trim();
 				styleRule.__starts = i;
 				buffer = "";
 				state = "before-name";
@@ -840,7 +860,7 @@ CSSOM.parse = function parse(token, options) {
 			break;
 
 		case ":":
-			if (state == "name") {
+			if (state === "name") {
 				name = buffer.trim();
 				buffer = "";
 				state = "before-value";
@@ -850,10 +870,10 @@ CSSOM.parse = function parse(token, options) {
 			break;
 
 		case '(':
-			if (state == 'value') {
+			if (state === 'value') {
 				index = token.indexOf(')', i + 1);
-				if (index == -1) {
-					throw new Error(i + ': unclosed "("');
+				if (index === -1) {
+					throw i + ': unclosed "("';
 				}
 				buffer += token.slice(i, index + 1);
 				i = index;
@@ -863,7 +883,7 @@ CSSOM.parse = function parse(token, options) {
 			break;
 
 		case "!":
-			if (state == "value" && token.indexOf("!important", i) === i) {
+			if (state === "value" && token.indexOf("!important", i) === i) {
 				priority = "important";
 				i += "important".length;
 			} else {
@@ -885,9 +905,9 @@ CSSOM.parse = function parse(token, options) {
 					break;
 				case "importRule":
 					importRule = new CSSOM.CSSImportRule;
-					importRule.parentRule = currentScope;
+					importRule.parentStyleSheet = importRule.styleSheet.parentStyleSheet = styleSheet;
 					importRule.cssText = buffer + character;
-					currentScope.cssRules.push(importRule);
+					styleSheet.cssRules.push(importRule);
 					buffer = "";
 					state = "before-selector";
 					break;
@@ -905,10 +925,13 @@ CSSOM.parse = function parse(token, options) {
 				case "before-name":
 				case "name":
 					styleRule.__ends = i + 1;
-					styleRule.parentRule = currentScope;
+					if (parentRule) {
+						styleRule.parentRule = parentRule;
+					}
+					styleRule.parentStyleSheet = styleSheet;
 					currentScope.cssRules.push(styleRule);
 					buffer = "";
-					if (currentScope.constructor == CSSOM.CSSKeyframesRule) {
+					if (currentScope.constructor === CSSOM.CSSKeyframesRule) {
 						state = "keyframeRule-begin";
 					} else {
 						state = "before-selector";
@@ -918,13 +941,14 @@ CSSOM.parse = function parse(token, options) {
 				case "before-selector":
 				case "selector":
 					// End of media rule.
-					// Nesting rules aren't supported yet
-					if (!currentScope.parentRule) {
-						throw new Error("unexpected }");
+					if (!parentRule) {
+						throw "unexpected }";
 					}
 					currentScope.__ends = i + 1;
-					currentScope.parentRule.cssRules.push(currentScope);
-					currentScope = currentScope.parentRule;
+					// Nesting rules arenâ€™t supported yet
+					styleSheet.cssRules.push(currentScope);
+					currentScope = styleSheet;
+					parentRule = null;
 					buffer = "";
 					state = "before-selector";
 					break;
@@ -998,20 +1022,20 @@ CSSOM.clone = function clone(stylesheet) {
 			styleClone.length = style.length;
 		}
 
-		if ("keyText" in rule) {
+		if (rule.hasOwnProperty('keyText')) {
 			ruleClone.keyText = rule.keyText;
 		}
 
-		if ("selectorText" in rule) {
+		if (rule.hasOwnProperty('selectorText')) {
 			ruleClone.selectorText = rule.selectorText;
 		}
 
-		if ("mediaText" in rule) {
+		if (rule.hasOwnProperty('mediaText')) {
 			ruleClone.mediaText = rule.mediaText;
 		}
 
-		if ("cssRules" in rule) {
-			rule.cssRules = clone(rule).cssRules;
+		if (rule.hasOwnProperty('cssRules')) {
+			ruleClone.cssRules = clone(rule).cssRules;
 		}
 	}
 

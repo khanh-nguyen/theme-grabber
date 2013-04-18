@@ -1,4 +1,7 @@
 (function() {
+
+    console.log('Setting up Snooper background task.');
+
     var Tab, Port, ObjectUrl;
 
     function sendMessage(message) {
@@ -33,10 +36,14 @@
                 }
                 break;
             case 'zip':
-                ObjectUrl = webkitURL.createObjectURL(createZip(message));
+                var zip = createZip(message);
+                console.log('ZIP ZIP ZIP', typeof zip);
+                ObjectUrl = URL.createObjectURL(zip);
+                console.log('Object URL', ObjectUrl);
                 sendResponse(true);
                 break;
             case 'download':
+                console.log('Download requested!');
                 chrome.tabs.update(Tab.id, { url: ObjectUrl },
                     function() {
                         log('Download complete');
@@ -82,6 +89,7 @@
             '<a href="{{url}}"> - tab url',
             '{{label}}</a></li> - tab label',
             '{{/navBar}} - End of Navbar',
+            '{{#subNav}} - Loop through the subnav entries.',
             '{{#hasActiveSubNav}} - If there is a subnav.',
             '  {{#activeSubNav}} - loop through all the subnav entries.',
             '    <li {{#active}}data-nav-secondary-state="active" class="active"{{/active}}>',
@@ -106,17 +114,20 @@
 
     function createZip(content){
         log('creating zip for theme ' + content.themeName);
-        var zip = new JSZip('STORE'); //'DEFLATE'
+
+        console.log('Creating zip object');
+        var zip = new JSZip(); //'STORE' //'DEFLATE'
+        console.log('Zip created', Object.keys(zip), zip);
         var themeDir = content.themeName + '/';
 
         var formattedHTML = prettyPrint(content.html, {max_char: 10000});
 
-        zip.add(themeDir + 'body.html', formattedHTML);
-        zip.add(themeDir + 'test.html', tester(formattedHTML));
-        zip.add(themeDir + 'codes.txt', sample());
-        zip.add(themeDir + 'assets/theme.css', content.reduced.join('\n'));
-        zip.add(themeDir + 'assets/overrides.css', '/* Put overrides in here */');
-        zip.add(themeDir + 'originals/page.html', content.pageHTML);
+        zip.file(themeDir + 'body.html', formattedHTML);
+        zip.file(themeDir + 'test.html', tester(formattedHTML));
+        zip.file(themeDir + 'codes.txt', sample());
+        zip.file(themeDir + 'assets/theme.css', content.reduced.join('\n'));
+        zip.file(themeDir + 'assets/overrides.css', '/* Put overrides in here */');
+        zip.file(themeDir + 'originals/page.html', content.pageHTML);
         var duplicateCheck = {};
 
         content.originals.forEach(function(original, i){
@@ -126,24 +137,26 @@
                 filename = temp[1] + i + '.' + temp[2];
             }
             log('adding stylesheet: ' + filename);
-            zip.add(themeDir + 'originals/' + filename, original.data);
+            zip.file(themeDir + 'originals/' + filename, original.data);
             duplicateCheck[filename] = true;
         });
 
         content.images.forEach(function(image, i) {
             var filename = image.filename;
             log('adding image: ' + filename + ' (' + image.url + ')');
-            zip.add(themeDir + 'assets/' + filename, image.data, {binary: true} );
+            zip.file(themeDir + 'assets/' + filename, image.data, {binary: true} );
         });
 
         log('done adding files to zip. sending to user...');
-        return zip.generate();
+        return zip.generate({ compression: 'STORE', type: 'blob' });
     }
 
     function activate(tab) {
+        console.log('Snooper activated.', tab);
+
         Tab = tab;
         var clientScripts = [
-            'thirdParty/jquery.js',
+            'components/jquery/jquery.js',
             'thirdParty/CSSOM.js',
             'page/files.js',
             'page/stylesheets.js',
@@ -163,5 +176,7 @@
     chrome.extension.onConnect.addListener(onConnect);
     chrome.extension.onRequest.addListener(onRequest);
     chrome.browserAction.onClicked.addListener(activate);
+
+    console.log('Snooper ready.');
 
 })();

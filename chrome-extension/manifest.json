@@ -1,6 +1,7 @@
 {
     "name": "Snooper",
-    "background_page": "background/background.html",
+    "manifest_version": 2,
+    "background": { "page": "background/background.html" },
     "browser_action": {
         "default_icon": "icons/48.jpg",
         "default_title": "Snooper"
@@ -12,5 +13,5 @@
         "128": "icons/128.jpg"
     },
     "permissions": [ "tabs", "notifications", "http://*/*", "https://*/*" ],
-    "version": "0.5"
+    "version": "0.6"
 }

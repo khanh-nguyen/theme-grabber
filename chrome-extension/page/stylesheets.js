@@ -15,7 +15,7 @@ function stylesheets(options) {
     data = data.replace(/'\) \+ "/g, '');
     data = data.replace(/filter:[^;]*;/g, '');
     data = data.replace(/behavior:[^;]*;/g, '');
-    data = data.replace(/content:[^;]*;/g, '');
+    //data = data.replace(/content:[^;]*;/g, '');
     data = data.replace(/expression\([^;]*;/g, '');
 
     if (options.inline) {
@@ -30,6 +30,7 @@ function stylesheets(options) {
         imports = [];
 
     var stylesheetObject;
+
 
     try {
         stylesheetObject = CSSOM.parse(data);
@@ -62,8 +63,8 @@ function stylesheets(options) {
                             .trim()
                             .replace(/\* html /, '') //ie hack
                             .replace(/^\.ie[6789]/, '') //ie hack
-                            .replace(/:[^\s]*/g, '')
-                            .trim(); //:hover, :focus, etc
+                            .replace(/:[^\s{]*/g, '')  //:hover, :focus, etc
+                            .trim();
 
                 if (simpleSelector) {
                     try {
@@ -91,7 +92,7 @@ function stylesheets(options) {
                     catch(e){
                         try {
                             if ($(simpleSelector).length) {
-                                found.push(cssText);
+                                found.push(rule.cssText);
                                 alreadyFound = true;
                             } else {
                                 notFound.push(selector);

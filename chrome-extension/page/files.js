@@ -52,8 +52,7 @@
 
     function urlToFilename(url) {
         var filename = absoluteUrl(url);
-
-        if (!filename || filename.match(/#/) || filename.match(/\(/)) { return false; }
+        if (!filename || filename.match(/#/) || filename.match(/\(/) || !url.match(/\/[^\.]*\.[^\.]*$/)) { return false; }
 
         filename = filename
                         .replace(/https?:\/\//, '') // remove remove http

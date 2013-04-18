@@ -1,0 +1,7 @@
+{
+  "name": "snooper",
+  "version": "0.0.0",
+  "dependencies": {
+    "jszip": "~1.0.0"
+  }
+}

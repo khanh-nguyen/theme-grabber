@@ -18,7 +18,8 @@
         $('script').remove();
 
         // Remove hidden elements
-        $('body :hidden').remove();
+        // TODO: make this an option?
+        //$('body :hidden').remove();
 
         var bodyClassNames = $('body').attr('class');
 
