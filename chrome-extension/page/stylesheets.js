@@ -10,13 +10,22 @@ function stylesheets(options) {
     var sourceUrl = options.sourceUrl;
     var imageUrls = options.imageUrls;
 
+    // A function passed to String.replace. People, for some weird reason, don't put a
+    // semicolon at the end of a CSS rule. If they don't, we still want to have the closing brace.
+    function replacement(match, endingMatch) {
+        return endingMatch === '}' ? '}' : '';
+    }
     // Remove javascript from PGE's css. WTF pge?
-    data = data.replace(/'" \+ \(location\.pathname\.split\('\/'\)\.slice\(0\,-3\)\.join\('\/'\) \+ '/g, "'");
-    data = data.replace(/'\) \+ "/g, '');
-    data = data.replace(/filter:[^;]*;/g, '');
-    data = data.replace(/behavior:[^;]*;/g, '');
-    //data = data.replace(/content:[^;]*;/g, '');
-    data = data.replace(/expression\([^;]*;/g, '');
+    data = data.replace(/-ms-filter:"[^"]*"*([;}])/g, replacement);
+    data = data.replace(/filter:[^;}]*([;}])/g, replacement);
+    data = data.replace(/behavior:[^;}]*([;}])/g, replacement);
+
+    // If any website has this same exact string in their CSS, all hope is lost.
+    data = data.replace(/\\'/g, '**::PLACEHOLDER::**');
+    data = data.replace(/'/g, '"');
+    data = data.replace("**::PLACEHOLDER::**", "\\'");
+
+    data = data.replace(/\b[\w-]+:expression\([^;}]*([;}])/g, replacement);
 
     if (options.inline) {
         // add placeholder so it can be found
